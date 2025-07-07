@@ -1,0 +1,144 @@
+-- -*- coding: utf-8; mode: lua -*-
+-- 雲2 by Medibang. Inc.
+
+firstDraw = true
+lastX = nil
+lastY = nil
+--
+--bs_setmode(1)
+
+-- params
+function param1()
+  local n = "Opacity by Pressure"
+  if bs_lang() == "ja" then
+    n = "筆圧不透明度"
+  end
+  return n, 0, 1, 0
+end
+
+function param2()
+  local n = "Image space"
+  if bs_lang() == "ja" then
+    n = "描画間隔"
+  end
+  return n, 1, 100, 20
+end
+
+function param3()
+  local n = "Scatter"
+  if bs_lang() == "ja" then
+    n = "ばらつき"
+  end
+  return n, 0, 100, 50
+end
+
+function param4()
+  local n = "Cloud Concentration"
+  if bs_lang() == "ja" then
+    n = "雲濃度"
+  end
+  return n, 0, 100, 5
+end
+
+function param5()
+  local n = "Allow layering"
+  if bs_lang() == "ja" then
+    n = "重ね時の濃度無効"
+  end
+  return n, 0, 1, 0
+end
+
+function param6()
+  local n = "Set particles above"
+  if bs_lang() == "ja" then
+    n = "上方向への伸び"
+  end
+  return n, 0, 100, 0
+end
+function param7()
+  local n = "Set particles right"
+  if bs_lang() == "ja" then
+    n = "右方向への伸び"
+  end
+  return n, 0, 100, 0
+end
+function param8()
+  local n = "Set particles below"
+  if bs_lang() == "ja" then
+    n = "下方向への伸び"
+  end
+  return n, 0, 100, 0
+end
+function param9()
+  local n = "Set particles left"
+  if bs_lang() == "ja" then
+    n = "左方向への伸び"
+  end
+  return n, 0, 100, 0
+end
+
+function param10()
+  local n = "Amount of lines"
+  if bs_lang() == "ja" then
+    n = "描画回数"
+  end
+  return n, 0, 100, 10
+end
+
+
+
+function main(x, y, p)
+  local w = bs_width()
+  local r, g, b = bs_fore()
+  local o = bs_opaque()
+  local distance = nil
+
+  local pOpacity = (bs_param1() == 1)
+  local interval = bs_param2()
+  local scatter = bs_param3()
+  
+  local drawCount = bs_param10()
+
+  if firstDraw then
+    if bs_param5() == 1 then
+      bs_setmode(1)
+    end
+    math.randomseed(bs_ms() % 4294967295)
+  else
+    distance = bs_distance(lastX - x, lastY - y)
+    if distance < w / 100 * interval then
+      return 0
+    end
+  end
+  firstDraw = false
+  local a = o * 255
+  if pOpacity then
+    a = a * p
+  end
+
+  local i
+  for i = 0, drawCount do
+    local rndX = bs_grand(0, w / 200 * scatter)
+    local absRndX = math.abs(rndX)
+    local rndY = bs_grand(0, w / 200 * scatter)
+    local absRndY = math.abs(rndY)
+    local dx = rndX + (absRndX * bs_param7() / 50) + (-absRndX * bs_param9() / 50) + x
+    local dy = rndY + (-absRndY * bs_param6() / 50) + (absRndY * bs_param8() / 50) + y
+    local dw = bs_grand(0, w / 2) + w / 1.5
+    local dist = bs_distance(x - dx, y - dy)
+    local bwR = w / 2 -- ブラシサイズの半径
+    if dist > bwR then
+      dist = bwR
+    end
+    local hardness = (bwR - dist) / bwR * 2 + 1
+    bs_air(dx, dy, dw, hardness, r, g, b, a * bs_param4() / 100)
+  end
+
+  lastX = x
+  lastY = y
+  return 1
+end
+
+function default_size()
+  return 300, .5
+end

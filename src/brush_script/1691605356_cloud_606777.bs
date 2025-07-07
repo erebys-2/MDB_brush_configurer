@@ -1,0 +1,129 @@
+-- -*- coding: utf-8; mode: lua -*-
+-- 丸ペン（平行線） by Medibang. Inc.
+
+first_call = true
+call_count = 0
+pressure_ema = 0
+
+width_high = nil
+width_low = nil
+pressure_alpha = nil
+skip_factor = nil
+ema_ratio = nil
+r_ratio = nil
+random_rotate = nil
+nsublines = nil
+subline_distance = nil
+
+
+function param1()
+  n = "Opacity by Pressure"
+  if bs_lang() == "ja" then
+    n = "筆圧不透明度"
+  end
+  return n, 0, 1, 0
+end
+
+function param2()
+  n = "Ooze"
+  if bs_lang() == "ja" then
+    n = "滲み"
+  end
+  return n, 0, 5, 3
+end
+
+function param3()
+  n = "Number of lines"
+  if bs_lang() == "ja" then
+    n = "平行線"
+  end
+  return n, 0, 5, 3
+end
+
+function param4()
+  n = "Distances of lines"
+  if bs_lang() == "ja" then
+    n = "平行線間隔"
+  end
+  return n, 0, 500, 20
+end
+
+function default_size()
+  return 5, 0
+end
+
+function init(x, y, p)
+  bs_setmode(1)
+  width_high = bs_width_max()
+  width_low = bs_width_min()
+  pressure_alpha = bs_param1() ~= 0
+  skip_factor = 1
+  ema_ratio = .5
+  r_ratio = 1
+  random_rotate = false
+  ooze = bs_param2()
+  if ooze ~= 0 then
+    skip_factor = 1 + ooze
+    r_ratio = .45
+    random_rotate = true
+  end
+  nsublines = bs_param3()
+  subline_distance = bs_param4()
+end
+
+
+function change_pressure(p)
+  ret = p
+  ret = ret * ema_ratio + pressure_ema * (1 - ema_ratio)
+  pressure_ema = ret
+  return ret
+end
+
+
+function main(x, y, p)
+
+  if first_call then
+    init(x, y, p)
+    first_call = false
+  end
+
+  call_count = call_count + 1
+  if call_count % skip_factor ~= 0 then
+    return 0
+  end
+
+  local r, g, b = bs_fore()
+  local o = bs_opaque()
+  local p2 = change_pressure(p)
+  local w = width_low + (width_high - width_low) * p2
+  local a = 255 * o
+  if pressure_alpha then
+    a = a * p2
+  end
+  local dx, dy = bs_dir()
+  local nx, ny = bs_normal()
+  local rad = bs_atan(dx, dy)
+
+  if random_rotate then
+    rad = 3.1415 * (math.random(200) - 100) / 100
+  end
+  bs_ellipse(x, y, w * r_ratio, w, rad, r, g, b, a)
+
+  for i = 0, nsublines - 1 do
+    subx = nx * (i + 1) * subline_distance
+    suby = ny * (i + 1) * subline_distance
+    if random_rotate then
+      rad = 3.1415 * (math.random(200) - 100) / 100
+    end
+    bs_ellipse(x + subx, y + suby, w * r_ratio, w, rad, r, g, b, a)
+    if random_rotate then
+      rad = 3.1415 * (math.random(200) - 100) / 100
+    end
+    bs_ellipse(x - subx, y - suby, w * r_ratio, w, rad, r, g, b, a)
+  end
+
+  return 1
+end
+
+-- function last(x, y, p)
+-- end

@@ -1,0 +1,141 @@
+-- -*- coding: utf-8; mode: lua -*-
+-- 分割（三分割） by Medibang. Inc.
+
+bs_setmode(1)
+
+-- params
+function param1()
+  local n = "Vertical Segments"
+  if bs_lang() == "ja" then
+    n = "縦分割"
+  end
+  return n, 1, 50, 3
+end
+
+function param2()
+  local n = "Horizontal Segments"
+  if bs_lang() == "ja" then
+    n = "横分割"
+  end
+  return n, 1, 50, 3
+end
+
+function param3()
+  local n = "Add Border"
+  if bs_lang() == "ja" then
+    n = "外枠をつける"
+  end
+  return n, 0, 1, 0
+end
+
+function param4()
+  local n = "Reduce Border by Half"
+  if bs_lang() == "ja" then
+    n = "外枠の太さを半分にする"
+  end
+  return n, 0, 1, 0
+end
+
+function use_base()
+  return true
+end
+
+function main(x, y, p)
+  return 0
+end
+
+function last(x, y, p)
+  local sx, ex = 0, bs_canvas_width()
+  local sy, ey = 0, bs_canvas_height()
+  local p1 = bs_param1()
+  local p2 = bs_param2()
+  local p3 = bs_param3()
+  local p4 = bs_param4()
+
+  local r, g, b = bs_fore()
+  local a = bs_opaque() * 255
+  local lw = bs_width_max()
+  local hlw = lw / 2
+  local qlw = hlw / 2
+
+  local bx, by = bs_base()
+  if bx ~= -1 and by ~= -1 then
+    sx, sy = bx, by -- 基点があればそれを使う
+    ex, ey = x, y -- 基点があったら描画したところまで
+    if sx > ex then
+      ex, sx = sx, ex
+    end
+    if sy > ey then
+      ey, sy = sy, ey
+    end
+  end
+
+  if p3 == 1 and p4 ~= 1 then
+    sx = sx + hlw
+    ex = ex - hlw
+    sy = sy + hlw
+    ey = ey - hlw
+  end
+
+  local w = (ex - sx) / p2
+  local h = (ey - sy) / p1
+
+
+  local i
+  -- 高さ分割(内の線）
+  local e = p1 - 1
+  for i = 1, e do
+    drawLine(sx, sy + h * i, ex, sy + h * i, r, g, b, a, lw, 1)
+  end
+  if p3 == 1 then
+    -- 横の外枠
+    if p4 == 1 then
+      drawLine(sx, sy + qlw, ex, sy + qlw, r, g, b, a, hlw, 1)
+      drawLine(sx, sy + h * p1 - qlw, ex, sy + h * p1 - qlw, r, g, b, a, hlw, 1)
+    else
+      drawLine(sx - hlw, sy, ex + hlw, sy, r, g, b, a, lw, 1)
+      drawLine(sx - hlw, sy + h * p1, ex + hlw, sy + h * p1, r, g, b, a, lw, 1)
+    end
+  end
+
+  -- 幅分割(内の線）
+  e = p2 - 1
+  for i = 1, e do
+    drawLine(sx + w * i, sy, sx + w * i, ey, r, g, b, a, lw, 1)
+  end
+  if p3 == 1 then
+    -- 縦の外枠
+    if p4 == 1 then
+      drawLine(sx + qlw, sy, sx + qlw, ey, r, g, b, a, hlw, 1)
+      drawLine(sx + w * p2 - qlw, sy, sx + w * p2 - qlw, ey, r, g, b, a, hlw, 1)
+    else
+      drawLine(sx, sy - hlw, sx, ey + hlw, r, g, b, a, lw, 1)
+      drawLine(sx + w * p2, sy - hlw, sx + w * p2, ey + hlw, r, g, b, a, lw, 1)
+    end
+  end
+
+  return 1
+end
+
+function drawLine(x1, y1, x2, y2, r, g, b, a, dw, pow)
+  local dx, dy = (x2 - x1) / 2 + x1, (y2 - y1) / 2 + y1
+  local rad = bs_atan(x2 - x1, y2 - y1)
+  local length = bs_distance(x2 - x1, y2 - y1)
+  createPolygonUnit()
+  bs_polygon_mul(length * pow, dw)
+  bs_polygon_rotate(rad)
+  bs_polygon_move(dx, dy)
+  bs_fill(r, g, b, a)
+end
+
+function createPolygonUnit()
+  bs_polygon_clear()
+  bs_polygon(0.5, 0.5)
+  bs_polygon(0.5, -0.5)
+  bs_polygon(-0.5, -0.5)
+  bs_polygon(-0.5, 0.5)
+end
+
+function default_size()
+  return 10, 1
+end

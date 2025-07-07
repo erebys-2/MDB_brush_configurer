@@ -1,0 +1,73 @@
+-- -*- coding: utf-8; mode: lua -*-
+-- アルコールマーカー by Medibang. Inc.
+
+pi = 3.141592
+bs_setmode(1)
+firstDraw = true
+lastDrawX = 0
+lastDrawY = 0
+
+function param1()
+  local n = "Angle"
+  if bs_lang() == "ja" then
+    n = "角度"
+  end
+  return n, 0, 100, 30
+end
+
+function param2()
+  local n = "Opaque"
+  if bs_lang() == "ja" then
+    n = "筆圧透明度"
+  end
+  return n, 0, 1, 1
+end
+
+function param3()
+  local n = "Width"
+  if bs_lang() == "ja" then
+    n = "太さ"
+  end
+  return n, 1, 10, 1
+end
+
+function  default_size()
+  return 25 , 0.75
+end
+
+function main(x, y, p)
+  local w = bs_width()
+  local r, g, b = bs_fore()
+  local p1 = bs_param1()
+  local p2 = bs_param2()
+  local p3 = bs_param3()
+  local a = bs_opaque() * 255
+  local bw = w / 10 * p3 / 2
+
+  if not firstDraw then
+    local distance = bs_distance(lastDrawX - x, lastDrawY - y)
+    if distance < w / 100 then -- 100 は適当
+      return 0
+    end
+  end
+
+  if p2 == 1 then
+    a = p * a
+  end
+  local rad = pi * p1 / 100 -- 回転は max 180度 なのでこれで良い。
+  local vx1, vy1 = bs_rotate(-bw, -(w / 2), rad)
+  local vx2, vy2 = bs_rotate(-bw, w / 2, rad)
+  local vx3, vy3 = bs_rotate(bw, w / 2, rad)
+  local vx4, vy4 = bs_rotate(bw, -(w / 2), rad)
+  bs_polygon(x + vx1, y + vy1)
+  bs_polygon(x + vx2, y + vy2)
+  bs_polygon(x + vx3, y + vy3)
+  bs_polygon(x + vx4, y + vy4)
+  bs_fill(r, g, b, a)
+
+  lastDrawX = x
+  lastDrawY = y
+  firstDraw = false
+
+  return 1
+end

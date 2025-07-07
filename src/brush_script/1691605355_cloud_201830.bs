@@ -1,0 +1,116 @@
+-- -*- coding: utf-8; mode: lua -*-
+-- Gペン by Medibang. Inc.
+
+first_call = true
+call_count = 0
+pressure_ema = 0
+
+width_high = nil
+width_low = nil
+pressure_alpha = nil
+skip_factor = nil
+cp1_pre = nil
+cp1_post = nil
+cp2_pre = nil
+cp2_post = nil
+ema_ratio = nil
+r_ratio = nil
+random_rotate = nil
+
+
+function param1()
+  n = "Opacity by Pressure"
+  if bs_lang() == "ja" then
+    n = "筆圧不透明度"
+  end
+  return n, 0, 1, 0
+end
+
+function param2()
+  n = "Ooze"
+  if bs_lang() == "ja" then
+    n = "滲み"
+  end
+  return n, 0, 5, 3
+end
+
+function default_size()
+  return 15, 0
+end
+
+function init(x, y, p)
+  bs_setmode(1)
+  width_high = bs_width_max()
+  width_low = bs_width_min()
+  pressure_alpha = bs_param1() ~= 0
+  skip_factor = 1
+  cp1_pre = .6
+  cp1_post = .45
+  cp2_pre = .92
+  cp2_post = .96
+  ema_ratio = .8
+  r_ratio = 1
+  random_rotate = false
+  ooze = bs_param2()
+  if ooze ~= 0 then
+    skip_factor = 1 + ooze
+    r_ratio = .45
+    random_rotate = true
+  end
+end
+
+
+function change_pressure(p)
+  ret = p
+  if p ~= 1 then
+    if p < cp1_pre then
+      ret = (cp1_post / cp1_pre) * p + 0
+    elseif p == cp1_pre then
+      ret = cp1_post
+    elseif cp1_pre < p and p < cp2_pre then
+      ret = ((cp2_post - cp1_post) / (cp2_pre - cp1_pre)) * (p - cp1_pre) + cp1_post
+    elseif p == cp2_pre then
+      ret = cp2_post
+    else
+      ret = ((1 - cp2_post) / (1 - cp2_pre)) * (p - cp2_pre) + cp2_post
+    end
+  end
+
+  ret = ret * ema_ratio + pressure_ema * (1 - ema_ratio)
+  pressure_ema = ret
+  return ret
+end
+
+
+function main(x, y, p)
+
+  if first_call then
+    init(x, y, p)
+    first_call = false
+  end
+
+  call_count = call_count + 1
+  if call_count % skip_factor ~= 0 then
+    return 0
+  end
+
+  local r, g, b = bs_fore()
+  local o = bs_opaque()
+  local p2 = change_pressure(p)
+  local w = width_low + (width_high - width_low) * p2
+  local a = 255 * o
+  if pressure_alpha then
+    a = a * p2
+  end
+  local dx, dy = bs_dir()
+  local rad = bs_atan(dx, dy)
+  if random_rotate then
+    rad = 3.1415 * (math.random(200) - 100) / 100
+  end
+
+  bs_ellipse(x, y, w * r_ratio, w, rad, r, g, b, a)
+  return 1
+end
+
+-- function last(x, y, p)
+-- end
