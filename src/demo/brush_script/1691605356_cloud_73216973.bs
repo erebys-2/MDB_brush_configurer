@@ -1,0 +1,178 @@
+-- -*- coding: utf-8; mode: lua -*-
+-- ドローイングペン2（リアル） by Medibang. Inc.
+-- pressure_changer.bs を元に パラメータを固定化したペン
+-- 入り抜き調整機能付き
+
+first_call = true
+pressure_ema = 0
+
+width_high = nil
+width_low = nil
+pressure_alpha = nil
+cp1_pre = nil
+cp1_post = nil
+cp2_pre = nil
+cp2_post = nil
+ema_ratio = nil
+
+pos = {}
+point_count = 0
+max_p = 0
+
+function param1()
+  n = "Opacity by Pressure"
+  if bs_lang() == "ja" then
+    n = "筆圧不透明度"
+  end
+  return n, 0, 1, 0
+end
+
+function param2()
+  n = "Start of stroke"
+  if bs_lang() == "ja" then
+    n = "入り"
+  end
+  return n, 0, 30, 20
+end
+
+function param3()
+  n = "End of stroke"
+  if bs_lang() == "ja" then
+    n = "抜き"
+  end
+  return n, 0, 30, 20
+end
+
+function default_size()
+  return 15, 0
+end
+
+function init(x, y, p)
+  bs_setmode(1)
+  width_high = bs_width_max()
+  width_low = bs_width_min()
+  pressure_alpha = bs_param1() ~= 0
+  cp1_pre = 0.01
+  cp1_post = 0.37
+  cp2_pre = 1
+  cp2_post = 0.25
+  ema_ratio = 0.39
+end
+
+
+function change_pressure(p)
+  ret = p
+  if p ~= width_high then
+    if p < cp1_pre then
+      ret = (cp1_post / cp1_pre) * p + 0
+    elseif p == cp1_pre then
+      ret = cp1_post
+    elseif cp1_pre < p and p < cp2_pre then
+      ret = ((cp2_post - cp1_post) / (cp2_pre - cp1_pre)) * (p - cp1_pre) + cp1_post
+    elseif p == cp2_pre then
+      ret = cp2_post
+    else
+      ret = ((1 - cp2_post) / (1 - cp2_pre)) * (p - cp2_pre) + cp2_post
+    end
+  end
+
+  ret = ret * ema_ratio + pressure_ema * (1 - ema_ratio)
+  pressure_ema = ret
+  return ret
+end
+
+
+function main(x, y, p)
+
+  if first_call then
+    init(x, y, p)
+    first_call = false
+  end
+
+  local p2 = change_pressure(p)
+  draw(x, y, p2)
+  pos[point_count] = {}
+  pos[point_count].x = x
+  pos[point_count].y = y
+  pos[point_count].p = p2
+  if max_p < p2 then
+    max_p = p2
+  end
+  point_count = point_count + 1
+  return 1
+end
+
+function last(x, y, p)
+  bs_reset()
+  drawIriNuki()
+  return 1
+end
+
+function drawIriNuki()
+  local c = point_count
+  local mp = max_p -- 最大筆圧
+  local hc = c / 2
+  local hp = pos[math.floor(hc)].p -- 真ん中
+  local p = 0
+
+  for k, v in ipairs(pos) do
+    if k < hc then
+      p = calc_p(k, c, mp, bs_param2(), v.p, hp)
+    else
+      p = calc_p(k, c, mp, bs_param3(), v.p, hp)
+    end
+    draw(v.x, v.y, p)
+  end
+end
+
+function calc_p(k, c, mp, st, vp, hp)
+  local p = 0
+  if st < 15 then
+    -- 細く
+    p = k / c
+    local tmp_p = 1
+    local in_p = (15 - st) / 30
+    local out_p = (15 - st) / 30
+    if k == 0 or k == c - 1 then
+      p = 0
+    end
+    if (p <= in_p) then
+      tmp_p = p / in_p
+    end
+    if (p >= (1.0 - out_p)) then
+      tmp_p = (1 - p) / out_p
+    end
+    p = tmp_p * mp
+    if (p < 0) then
+      p = 0
+    elseif (p > hp) then
+      p = hp
+    end
+  elseif st > 15 then
+    -- 太く
+    local w = 1 / c
+    local s = st - 16
+    if k / c <= 0.2 then
+      p = vp + vp * (s * 0.1) * (1 - (w * k / 0.2))
+    elseif k / c >= 0.8 then
+      p = vp + vp * (s * 0.1) * (1 - (w * (c - k) / 0.2))
+    else
+      p = vp
+    end
+  else
+    p = vp
+  end
+  return p
+end
+
+function draw(x, y, p)
+  local r, g, b = bs_fore()
+  local o = bs_opaque()
+  local w = width_low + (width_high - width_low) * p
+  local a = 255 * o
+  if pressure_alpha then
+    a = a * p
+  end
+  local dx, dy = bs_dir()
+  bs_ellipse(x, y, w, w, 0, r, g, b, a)
+end

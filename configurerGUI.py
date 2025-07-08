@@ -1,5 +1,6 @@
 import sys
-from PyQt6.QtWidgets import QInputDialog, QApplication, QWidget,  QGridLayout, QListWidget, QPushButton, QLabel, QMessageBox, QLineEdit
+from PyQt6.QtWidgets import QInputDialog, QApplication, QWidget, QGridLayout, QListWidget, QPushButton, QLabel, QMessageBox, QLineEdit
+from PyQt6.QtGui import QIcon
 from cfg_handler import cfg_handler, path_cfg_handler
 #based on https://www.pythontutorial.net/pyqt/pyqt-qlistwidget/
 
@@ -9,7 +10,7 @@ class PopupWindow(QWidget):
         self.cfg1 = cfg_handler()
 
         self.setWindowTitle('Brush Comparison')
-        #self.setWindowIcon(QIcon('./assets/wishlist.png'))
+        self.setWindowIcon(QIcon('./src/brushcfg_icon2.png'))
         self.setGeometry(100, 100, 720, 400)
 
         layout = QGridLayout(self)
@@ -32,9 +33,9 @@ class PopupWindow(QWidget):
         label3.setText(f'{brush0}')
         layout.addWidget(label3, 2, 0)
         
-        label4 = QLabel(self)
-        label4.setText(f'{brush1}')
-        layout.addWidget(label4, 2, 2)
+        target_group_name_label = QLabel(self)
+        target_group_name_label.setText(f'{brush1}')
+        layout.addWidget(target_group_name_label, 2, 2)
         
         
         #qlists
@@ -43,7 +44,7 @@ class PopupWindow(QWidget):
         layout.addWidget(self.curr_brushlist_details, 4, 2, 4, 1)
         
         self.default_brushlist_details = QListWidget(self)
-        self.default_brushlist_details.addItems(self.cfg1.get_brush_details(self.cfg1.defaultcfg, self.cfg1.default_brushes, brush0))
+        self.default_brushlist_details.addItems(self.cfg1.get_brush_details(self.cfg1.defaultcfg, self.cfg1.default_brushes_dict, brush0))
         layout.addWidget(self.default_brushlist_details, 4, 0, 4, 1)
  
         #self.show()
@@ -56,15 +57,20 @@ class MainWindow(QWidget):
         
         #pop up window
         self.w = None
+        
+        self.filter_active = False
+        self.hash = None
+        
+        self.file_deletion_en = False
 
         self.setWindowTitle('Brush Config Manager: Main Window')
-        #self.setWindowIcon(QIcon('./assets/wishlist.png'))
+        self.setWindowIcon(QIcon('./src/brushcfg_icon2.png'))
         self.setGeometry(100, 100, 1080, 480)
 
         layout = QGridLayout(self)
         self.setLayout(layout)
         
-        #qlabels
+        #qlabels--------------------------------------------------------------------------------------------
         label = QLabel(self)
         label.setText("Default Brushes:")
         layout.addWidget(label, 0, 0)
@@ -89,107 +95,121 @@ class MainWindow(QWidget):
         label3_2.setText("Brushes selected from 'Default Brushes' can\nbe imported into a selected 'Brush Group'.")
         layout.addWidget(label3_2, 3, 4)
         
-        self.label4 = QLabel(self)
-        self.label4.setText(f"Target Group:\n None Selected")
-        layout.addWidget(self.label4, 0, 6)
+        self.target_group_name_label = QLabel(self)
+        self.target_group_name_label.setText(f"Target Group:\n-1: Unassigned Brushes ")
+        layout.addWidget(self.target_group_name_label, 0, 6)
         
-        self.label5 = QLabel(self)
-        self.label5.setText(f'Last Selected:\nNone')
-        layout.addWidget(self.label5, 3, 0)
+        self.default_brushes_last_sel_label = QLabel(self)
+        self.default_brushes_last_sel_label.setText(f'Last Selected:\nNone')
+        layout.addWidget(self.default_brushes_last_sel_label, 3, 0)
         
-        self.label5_1 = QLabel(self)
-        self.label5_1.setText(f'Last Selected:\nNone')
-        layout.addWidget(self.label5_1, 3, 2)
+        self.my_brushes_last_sel_label = QLabel(self)
+        self.my_brushes_last_sel_label.setText(f'Last Selected:\nNone')
+        layout.addWidget(self.my_brushes_last_sel_label, 3, 2)
 
-        #qlist widgets
+        #qlist widgets-----------------------------------------------------------------------------------------------------
         self.curr_brushlist = QListWidget(self)
         self.curr_brushlist.addItems(self.cfg1.current_brushes_list)
         layout.addWidget(self.curr_brushlist, 4, 2, 4, 1)
         self.curr_brushlist.setSelectionMode(QListWidget.SelectionMode.MultiSelection)
         
         self.default_brushlist = QListWidget(self)
-        self.default_brushlist.addItems(self.cfg1.default_brushes.keys())
+        self.default_brushlist.addItems(self.cfg1.default_brushes_dict.keys())
         layout.addWidget(self.default_brushlist, 4, 0, 4, 1)
         self.default_brushlist.setSelectionMode(QListWidget.SelectionMode.MultiSelection)
         
         self.grouplist = QListWidget(self)
-        self.grouplist.addItems([f'{self.cfg1.brush_groups[key]}: {key}' for key in self.cfg1.brush_groups])
+        self.grouplist.addItems(self.cfg1.get_formatted_brushgroup_strlist())
         layout.addWidget(self.grouplist, 4, 4, 4, 1)
         
         self.brushes_in_grouplist = QListWidget(self)
         self.brushes_in_grouplist.addItems(['Select a Brush Group',])
         layout.addWidget(self.brushes_in_grouplist, 1, 6, 4, 1)
 
-        # create buttons
+        #qpushbuttons-------------------------------------------------------------------------------
         import_button = QPushButton('Import Selected')
         import_button.clicked.connect(self.import_selected)
+        layout.addWidget(import_button, 1, 0)
 
         deselect_default_button = QPushButton('Deselect')
         deselect_default_button.clicked.connect(self.deselect_from_default)
+        layout.addWidget(deselect_default_button, 2, 0)
         
         deselect_current_button = QPushButton('Deselect')
         deselect_current_button.clicked.connect(self.deselect_from_current)
+        layout.addWidget(deselect_current_button, 2, 2)
 
         remove_button = QPushButton('Delete Selected')
         remove_button.clicked.connect(self.remove)
+        layout.addWidget(remove_button, 1, 2)
+        
+        self.file_deletion_en_btn = QPushButton('Enable File Deletion')
+        self.file_deletion_en_btn.clicked.connect(self.toggle_file_deletion)
+        layout.addWidget(self.file_deletion_en_btn, 1, 3)
+        
+        select_unassigned_btn = QPushButton('Selected Unnassigned Brushes')
+        select_unassigned_btn.clicked.connect(self.select_unassigned)
+        layout.addWidget(select_unassigned_btn, 2, 3)
 
         self.details_button = QPushButton('Open Brush Compare')
         self.details_button.clicked.connect(self.open_popup)
+        layout.addWidget(self.details_button, 3, 3)
+        
+        self.filter_by_group_btn = QPushButton('Filter by Selected Group')
+        self.filter_by_group_btn.clicked.connect(self.filter_by_group)
+        layout.addWidget(self.filter_by_group_btn, 4, 3)
         
         move_to_group_btn = QPushButton('Send Selected Brushes\n to Target Group')
         move_to_group_btn.clicked.connect(self.send_brushes)
+        layout.addWidget(move_to_group_btn, 1, 5)
         
         add_group_btn = QPushButton('Add Brush Group')
         add_group_btn.clicked.connect(self.add_brush_group)
+        layout.addWidget(add_group_btn, 2, 5)
         
         delete_group_btn = QPushButton('Deleted Selected Group')
         delete_group_btn.clicked.connect(self.delete_brush_group)
+        layout.addWidget(delete_group_btn, 3, 5)
         
-        #misc triggers
+        rename_group_btn = QPushButton('Rename Selected Group')
+        rename_group_btn.clicked.connect(self.rename_brush_group)
+        layout.addWidget(rename_group_btn, 4, 5)
+        
+        #misc triggers----------------------------------------------------------------------------------------------
         self.grouplist.itemClicked.connect(self.show_brushes_in_group)
         self.curr_brushlist.itemClicked.connect(self.update_last_selected_brush_current)
         self.default_brushlist.itemClicked.connect(self.update_last_selected_brush_default)
         
-        #btn layout
-        layout.addWidget(import_button, 1, 0)
+        self.show_brushes_in_group()
         
-        layout.addWidget(deselect_default_button, 2, 0)
-        
-        
-        layout.addWidget(remove_button, 1, 2)
-        
-        layout.addWidget(deselect_current_button, 2, 2)
-        
-        
-        layout.addWidget(self.details_button, 3, 3)
-        
-        layout.addWidget(move_to_group_btn, 1, 5)
-        
-        layout.addWidget(add_group_btn, 2, 5)
-        
-        layout.addWidget(delete_group_btn, 3, 5)
-        # show the window
-        #self.show()
-
+    #-------------------------------brush related functions--------------------------------------------------------------------
     def import_selected(self):
+        #only import brushes that don't already exist in my brushes
         import_list = [x.text() for x in self.default_brushlist.selectedItems() 
-                       if x.text() not in [self.cfg1.brush2cfg[section]['name'] for section in self.cfg1.brush2cfg.sections()[1:]]]
-        
+                       if x.text() not in self.cfg1.current_brushes_list]
         #update group list
-        if self.cfg1.import_brushes(import_list, str(self.grouplist.currentRow())):
-            self.grouplist.addItem(f'{self.cfg1.brush_groups['New Brushes']}: {'New Brushes'}')
+        if self.cfg1.import_brushes(import_list, str(self.grouplist.currentRow())):#True if New Brushes group doesn't exist
+            self.grouplist.clear()
+            self.grouplist.addItems(self.cfg1.get_formatted_brushgroup_strlist())
             
         self.curr_brushlist.clear()
         self.curr_brushlist.addItems(self.cfg1.current_brushes_list)
         
+        #if self.grouplist.currentRow() != -1:
         self.show_brushes_in_group()
+        
+        self.filter_active = False
+        self.hash = None
         
         
     def remove(self):
-        del_list = [self.curr_brushlist.row(x) for x in self.curr_brushlist.selectedItems()]
+        if self.hash == None:
+            del_list = [self.curr_brushlist.row(x) for x in self.curr_brushlist.selectedItems()]
+        else:
+            del_list = [self.hash[self.curr_brushlist.row(x)] for x in self.curr_brushlist.selectedItems()]
         
         #print(del_list)
-        self.cfg1.delete_brushes(del_list)
+        self.cfg1.delete_brushes(del_list, self.file_deletion_en)
         
         for x in self.curr_brushlist.selectedItems():
             self.curr_brushlist.takeItem(self.curr_brushlist.row(x))
@@ -206,12 +226,23 @@ class MainWindow(QWidget):
             x.setSelected(False)
             
     def update_last_selected_brush_default(self):
-        self.label5.setText(f'Last Selected:\n{self.default_brushlist.currentItem().text()}')
+        self.default_brushes_last_sel_label.setText(f'Last Selected:\n{self.default_brushlist.currentItem().text()}')
         
     def update_last_selected_brush_current(self):
-        self.label5_1.setText(f'Last Selected:\n{self.curr_brushlist.currentItem().text()}')
+        self.my_brushes_last_sel_label.setText(f'Last Selected:\n{self.curr_brushlist.currentItem().text()}')
             
-
+    def toggle_file_deletion(self):
+        if not self.file_deletion_en:
+            msg = QMessageBox(window)
+            msg.setWindowTitle("Warning")
+            msg.setText("Enabling file deletion will delete brush scripts and bitmaps from your local directory in addition to removing them from the config files.\n\nThis software only has replacement files for the brushes in 'Default Brushes'.")
+            msg.exec()
+            self.file_deletion_en_btn.setText('Disable File Deletion')
+            self.file_deletion_en = True
+        else:
+            self.file_deletion_en = False
+            self.file_deletion_en_btn.setText('Enable File Deletion')
+    
     def open_popup(self):
         if self.w is None:
             if self.default_brushlist.currentItem() != None:
@@ -220,11 +251,17 @@ class MainWindow(QWidget):
                 brush0 = 'None Selected'
                 
             if self.curr_brushlist.currentRow() != -1:
-                brush1 = self.cfg1.current_brushes_list[self.curr_brushlist.currentRow()]#self.curr_brushlist.currentItem().text()
+                if self.hash == None:
+                    key = self.curr_brushlist.currentRow()
+                else:
+                    key = self.hash[self.curr_brushlist.currentRow()]
+                brush1 = self.cfg1.current_brushes_list[key]
+                brush1_index = str(key)
             else:
                 brush1 = 'None Selected'
+                brush1_index = '0'
                 
-            self.w = PopupWindow(brush0, brush1, str(self.curr_brushlist.currentRow()))
+            self.w = PopupWindow(brush0, brush1, brush1_index)
             self.w.show()
             self.details_button.setText('Close Brush Compare')
 
@@ -232,27 +269,33 @@ class MainWindow(QWidget):
             self.w = None 
             self.details_button.setText('Open Brush Compare')
             
+            
+    #----------------------------------------------brush group related functions------------------------------------------
     def send_brushes(self):
         brush_list = []
-        for itm in self.curr_brushlist.selectedItems():
-            brush_list.append(itm.text())
+        if self.hash == None:
+            brush_list = [self.curr_brushlist.row(x) for x in self.curr_brushlist.selectedItems()]
+        else:
+            brush_list = [self.hash[self.curr_brushlist.row(x)] for x in self.curr_brushlist.selectedItems()]
         
         self.cfg1.set_brush_group(brush_list, str(self.grouplist.currentRow()))
-        self.show_brushes_in_group()
+        self.show_brushes_in_group() #update brushes in group
+        if self.filter_active:#update hash and my brushes
+            for selected_item in self.curr_brushlist.selectedItems():
+                self.hash.pop(self.curr_brushlist.row(selected_item))
+                self.curr_brushlist.takeItem(self.curr_brushlist.row(selected_item))
+                del selected_item
         
     def show_brushes_in_group(self):
         #update Q list
         self.brushes_in_grouplist.clear()
         str_list = self.cfg1.get_brush_names_from_group(str(self.grouplist.currentRow()))
-        if self.grouplist.currentRow() == -1:
-            str_list = []
-        if str_list == []:
-            str_list.append('No Brushes')
+
         self.brushes_in_grouplist.addItems(str_list)
         
         #update label
         if self.grouplist.currentItem() != None:
-            self.label4.setText(f"Target Group:\n {self.grouplist.currentItem().text()}")
+            self.target_group_name_label.setText(f"Target Group:\n {self.grouplist.currentItem().text()}")
             
     def add_brush_group(self):
         text, ok = QInputDialog.getText(self, 'Add New Brush Group', 'Name:')
@@ -260,19 +303,51 @@ class MainWindow(QWidget):
             self.cfg1.add_group(text)
         #reset grouplist
         self.grouplist.clear()
-        self.grouplist.addItems([f'{self.cfg1.brush_groups[key]}: {key}' for key in self.cfg1.brush_groups])
+        self.grouplist.addItems(self.cfg1.get_formatted_brushgroup_strlist())
             
     def delete_brush_group(self):
         self.cfg1.delete_group(str(self.grouplist.currentRow()))
         #reset grouplist
         self.grouplist.clear()
-        self.grouplist.addItems([f'{self.cfg1.brush_groups[key]}: {key}' for key in self.cfg1.brush_groups])
+        self.grouplist.addItems(self.cfg1.get_formatted_brushgroup_strlist())
         self.brushes_in_grouplist.clear()
         
         #reset my brush list
         self.curr_brushlist.clear()
         self.curr_brushlist.addItems(self.cfg1.current_brushes_list)
         
+        self.hash = None
+        
+    def rename_brush_group(self):
+        if self.grouplist.currentItem() != None:
+            text, ok = QInputDialog.getText(self, f'Renaming Group {self.grouplist.currentItem().text()}', 'New Name:')
+            if ok and text:
+                self.cfg1.rename_group(str(self.grouplist.currentRow()), text)
+ 
+                #update grouplist
+                self.grouplist.currentItem().setText(self.cfg1.get_formatted_brushgroup_strlist()[self.grouplist.currentRow()])
+                
+                #set target group name
+                self.target_group_name_label.setText(f"Target Group:\n {self.grouplist.currentItem().text()}")
+                
+    def filter_by_group(self):
+        if self.filter_active:
+            self.filter_by_group_btn.setText('Filter by Selected Group')
+            self.curr_brushlist.clear()
+            self.curr_brushlist.addItems(self.cfg1.current_brushes_list)
+            self.hash = None
+            self.filter_active = False
+        else:
+            self.filter_by_group_btn.setText('Clear Group Filter')
+            self.curr_brushlist.clear()
+            self.curr_brushlist.addItems(self.cfg1.get_filtered_currbrush_list(str(self.grouplist.currentRow())))
+            self.hash = self.cfg1.get_relative_hash(str(self.grouplist.currentRow()))
+            self.filter_active = True
+            
+    def select_unassigned(self):
+        self.grouplist.setCurrentRow(-1)
+        self.target_group_name_label.setText(f"Target Group:\n{self.grouplist.currentRow()}: Unassigned Brushes ")
+        self.show_brushes_in_group()
         
 class ini_window(QWidget):
     def __init__(self, *args, **kwargs):
@@ -281,7 +356,7 @@ class ini_window(QWidget):
         self.cfg0 = path_cfg_handler()
         
         self.setWindowTitle('Brush Config Manager: Path Selection')
-        #self.setWindowIcon(QIcon('./assets/wishlist.png'))
+        self.setWindowIcon(QIcon('./src/brushcfg_icon2.png'))
         self.setGeometry(100, 100, 400, 100)
 
         layout = QGridLayout(self)
@@ -297,15 +372,15 @@ class ini_window(QWidget):
         layout.addWidget(self.pathTextBox, 1, 0)
 
         label2 = QLabel()
-        label2.setText('Suggested: C:\\Users\\[your username]\\AppData\\Local\\Medibang\\CloudAlpaca\n\nDemo Path: src\\demo')
+        label2.setText('Typical Path: C:\\Users\\[your username]\\AppData\\Local\\Medibang\\CloudAlpaca\n\nDemo Path: src\\demo')
         layout.addWidget(label2, 3, 0)
         
-        self.launch_btn = QPushButton('Launch Main Program')
+        self.launch_btn = QPushButton('Launch Main Window')
         self.launch_btn.clicked.connect(self.launch_program)
         layout.addWidget(self.launch_btn, 1, 1)
         
         self.label3 = QLabel()
-        self.label3.setText(f'Current Path: {self.cfg0.get_curr_path()}')
+        self.label3.setText(f'Current Path: {self.cfg0.get_curr_path()}\n')
         layout.addWidget(self.label3, 2, 0)
         
         self.show()
@@ -318,10 +393,10 @@ class ini_window(QWidget):
         if self.main_window is None:
             self.main_window = MainWindow()
             self.main_window.show()
-            self.launch_btn.setText('Un-Launch Main Progam')
+            self.launch_btn.setText('Un-Launch Main Window')
         else:
             self.main_window = None
-            self.launch_btn.setText('Launch Main Program')
+            self.launch_btn.setText('Launch Main Window')
     
 
 if __name__ == '__main__':

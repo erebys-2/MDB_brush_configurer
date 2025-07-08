@@ -1,0 +1,122 @@
+-- -*- coding: utf-8; mode: lua -*-
+-- 線対称ペン by Medibang. Inc.
+
+bs_setmode( 1 )
+
+pi = 3.141592
+firstDraw = true
+lastDrawX = nil
+lastDrawY = nil
+firstDrawX = nil
+firstDrawY = nil
+
+function param1()
+  local s = "Opaque"
+  if bs_lang() == "ja" then
+    s = "筆圧不透明度"
+  end
+  return s, 0, 1, 0
+end
+
+function param2()
+  local s = "Line angle[']"
+  if bs_lang() == "ja" then
+    s = "角度[°]"
+  end
+  return s, 0, 90, 0
+end
+
+function param3()
+  local s = "Turn around"
+  if bs_lang() == "ja" then
+    s = "反転"
+  end
+  return s, 0, 1, 0
+
+end
+
+function use_base()
+  return true
+end
+
+function get_base()
+  local bsx, bsy = bs_base()
+  if (bsx == -1) and (bsy == -1) then
+    bsx = firstDrawX
+    bsy = firstDrawY
+  end
+  return bsx, bsy
+end
+
+function calc_l_symmetry(x, y, bsx, bsy, rad)
+  local ox = x - bsx
+  local oy = y - bsy
+  local xx, yy = bs_rotate(ox, oy, -rad)
+  local osx, osy = -xx ,yy
+  local xxx, yyy = bs_rotate(osx, osy, rad)
+  return xxx + bsx, yyy + bsy
+end
+
+function default_size()
+  return 10, 0
+end
+
+function main(x, y, p)
+
+  if firstDraw then
+    firstDrawX = x
+    firstDrawY = y
+  end
+
+  local p1 = bs_param1()
+  local p2 = bs_param2()
+  local p3 = bs_param3()
+  local bsx, bsy = get_base()
+  local r, g, b = bs_fore()
+  local w = bs_width()
+  local a = bs_opaque() * 255
+
+  -- 最小幅調整
+  if w < 0.25 then
+    w = 0.25
+  end
+
+  -- 描画間隔
+  if not firstDraw then
+    local distance = bs_distance(lastDrawX - x, lastDrawY - y)
+    if distance < w / 20 then
+      return 0
+    end
+  end
+
+  -- 透明度設定
+  if p1 == 1 then
+    a = p * a
+  end
+
+  -- ラジアンに変換
+  local rad = p2 / 90 * pi / 2
+  if p3 == 1 then
+    rad = rad + pi / 2 -- 鏡を反転なら 90°足す
+  end
+
+  if bs_preview() then
+    bsx = bs_canvas_width() / 2
+    bsy = bs_canvas_height() / 2
+    bs_ellipse(bsx, bsy, 1, 50, rad, r, g, b, 255)
+    bs_ellipse(bsx, bsy, 10, 1, rad, r, g, b, 255)
+    x = x / 2 + bsx
+  end
+
+  -- メイン線
+  bs_ellipse(x, y, w, w, 0, r, g, b, a) -- メイン線
+
+  -- 線対称
+  local sx, sy = calc_l_symmetry(x, y, bsx, bsy, rad)
+  bs_ellipse(sx, sy, w, w, 0, r, g, b, a)
+
+  lastDrawX = x
+  lastDrawY = y
+  firstDraw = false
+  return 1
+end

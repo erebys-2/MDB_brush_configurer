@@ -1,0 +1,153 @@
+-- -*- coding: utf-8; mode: lua -*-
+-- 点描2 by Medibang. Inc.
+
+firstDraw = true
+lastX = nil
+lastY = nil
+
+--
+bs_setmode(1)
+
+-- params
+function param1()
+  local n = "Opacity by Pressure"
+  if bs_lang() == "ja" then
+    n = "筆圧不透明度"
+  end
+  return n, 0, 1, 0
+end
+
+function param2()
+  local n = "Dot size"
+  if bs_lang() == "ja" then
+    n = "点の大きさ(px)"
+  end
+  return n, 1, 20, 2
+end
+
+function param3()
+  local n = "Image space"
+  if bs_lang() == "ja" then
+    n = "描画間隔"
+  end
+  return n, 1, 20, 20
+end
+
+function param4()
+  local n = "Scatter"
+  if bs_lang() == "ja" then
+    n = "ばらつき"
+  end
+  return n, 0, 100, 100
+end
+
+function param5()
+  local n = "Layer images"
+  if bs_lang() == "ja" then
+    n = "点を重ねて描画する"
+  end
+  return n, 0, 1, 1
+end
+
+function param6()
+  local n = "Stay within brush size"
+  if bs_lang() == "ja" then
+    n = "ブラシサイズ内に描画"
+  end
+  return n, 0, 1, 0
+end
+
+function main(x, y, p)
+
+  local init = function()
+    math.randomseed(bs_ms() % 4294967295)
+  end
+
+  local can_draw = function(x, y, r, g, b, radius, alreadyDrawn)
+      -- これから点を打とうとしている場所に描画可能か調べる。
+
+      if bs_param5() == 1 then
+        -- 点を重ねて描画して良いので OK
+        return true
+      end
+
+      local d = radius * 2
+      local idx, item
+      local i, j
+
+      -- 今回の描画処理で描かれるはずの場所について調べる。
+      for idx, item in ipairs(alreadyDrawn) do
+        if bs_distance(item.x - x, item.y - y) <= d then
+          return false
+        end
+      end
+
+      -- すでに書かれている場所について調べる。
+      for i = 0, d do
+        for j = 0, d do
+          local ox, oy = i - radius, j - radius
+          local dst = bs_distance(ox, oy)
+          if radius >= dst then -- continue がなかった。。。
+            local gr, gg, gb, ga = bs_pixel_get(x + ox, y + oy)
+            if (ga ~= 0 and gr == r and gg == g and gb == b) then
+              return false
+            end
+          end
+        end
+      end
+      return true
+    end
+
+  local w = bs_width()
+  local r, g, b = bs_fore()
+  local o = bs_opaque()
+  local distance = nil
+
+  if firstDraw then
+    init()
+  else -- 初回は必ず描画したい！
+    distance = bs_distance(lastX - x, lastY - y)
+    if distance < w / 100 * bs_param3() then
+      return 0
+    end
+  end
+  firstDraw = false
+
+  local a = o * 255
+  if bs_param1() == 1 then
+    a = a * p
+  end
+  local drawCount = math.ceil(p * 100)
+  if drawCount > w then
+    drawCount = w
+  end
+  local i
+  local alreadyDrawn = {}
+  for i = 0, drawCount do
+    local dx = bs_grand(0, w / 400 * bs_param4()) + x
+    local dy = bs_grand(0, w / 400 * bs_param4()) + y
+    local dw = bs_param2()
+
+    local inARange = true
+    if bs_param6() == 1 then
+      if (w / 2 - dw / 2) < bs_distance(dx - x, dy - y) then
+        inARange = false
+      end
+    end
+
+    if inARange then
+      if can_draw(dx, dy, r, g, b, dw / 2.0, alreadyDrawn) then
+        alreadyDrawn[i] = {x=dx, y=dy}
+        bs_ellipse(dx, dy, dw, dw, 0, r, g, b, a)
+      end
+    end
+  end
+  lastX = x
+  lastY = y
+  return 1
+
+end
+
+function default_size()
+  return 30, 1
+end

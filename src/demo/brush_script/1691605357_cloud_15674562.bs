@@ -1,0 +1,43 @@
+-- -*- coding: utf-8; mode: lua -*-
+-- 塗りつぶし by Medibang. Inc.
+
+bs_setmode(1)
+
+firstDraw = true
+pos = {}
+
+function main(x, y, p)
+
+  local w = bs_width()
+  if not firstDraw then
+    if bs_distance(x - lastX, y - lastY) < w / 50 then
+      return 0
+    end
+  end
+  firstDraw = false
+
+  local r, g, b = bs_fore()
+  local o = bs_opaque() * 255
+  table.insert(pos, {x=x, y=y});
+
+  bs_ellipse(x, y, w, w, 0, r, g, b, o)
+
+  lastX = x
+  lastY = y
+  return 1
+end
+
+function last(x, y, p)
+  bs_reset()
+  local r, g, b = bs_fore()
+  local o = bs_opaque() * 255
+
+  for k, v in ipairs(pos) do
+    bs_polygon(v.x, v.y)
+  end
+  bs_fill(r, g, b, o)
+end
+
+function default_size()
+  return 10, 1
+end
