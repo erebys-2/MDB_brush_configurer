@@ -185,8 +185,7 @@ class MainWindow(QWidget):
     #-------------------------------brush related functions--------------------------------------------------------------------
     def import_selected(self):
         #only import brushes that don't already exist in my brushes
-        import_list = [x.text() for x in self.default_brushlist.selectedItems() 
-                       if x.text() not in self.cfg1.current_brushes_list]
+        import_list = [x.text() for x in self.default_brushlist.selectedItems()]
         #update group list
         if self.cfg1.import_brushes(import_list, str(self.grouplist.currentRow())):#True if New Brushes group doesn't exist
             self.grouplist.clear()

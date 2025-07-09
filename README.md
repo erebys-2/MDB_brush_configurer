@@ -26,3 +26,8 @@ Current Limitations:
 
 Notes:
 -Only run program when Medibang Paint is closed
+
+*For totally new Medibang installs only that haven't run yet
+-The 'General' section in Brush2.ini initially gets moved to the end of the file after Medibang initially downloads brushes.
+ Solution: Close and reopen Medibang twice and then make sure it appears to the top of the file.
+ Having an incorrectly placed 'General' section will most likely crash the program since indexing will be off.

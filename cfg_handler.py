@@ -2,6 +2,9 @@ import configparser as cfgp
 import os
 from file_handler import file_handler as fh
 #File contains cfg parser related classes
+#Note: The 'General' section in Brush2.ini initially gets moved to the last index after Medibang initially downloads brushes
+#Close and reopen Medibang twice and it goes to the top of the file.
+#Having an incorrectly placed 'General' section will most likely crash the program since indexing will be off.
 
 class path_cfg_handler():#cfg handler class for initial window and setting path for program
     def __init__(self):
@@ -27,11 +30,32 @@ class cfg_handler():#cfg handler class responsible for main functionalities
         
         self.defaultcfg = cfgp.ConfigParser()
         self.defaultcfg.read('src/Default.ini')
-
-        self.brush2cfg = cfgp.ConfigParser()
-        self.brush2cfg.read(os.path.join(self.mdb_path, 'Brush2.ini'))
         
+        self.brush2cfg = cfgp.ConfigParser()
         self.brushgroupcfg = cfgp.ConfigParser()
+        
+        #add ini files if not present
+        if 'Brush2.ini' not in os.listdir(self.mdb_path):
+            self.brush2cfg['General'] = {
+                'activeIndex': '0',
+                'version': '1'
+            }
+            with open(os.path.join(self.mdb_path, 'Brush2.ini'), 'w') as configfile:
+                self.brush2cfg.write(configfile)
+        else:
+            self.brush2cfg.read(os.path.join(self.mdb_path, 'Brush2.ini'))
+        
+        if 'BrushGroup.ini' not in os.listdir(self.mdb_path):
+            self.brushgroupcfg['0'] = {
+                'name': 'New Brushes',
+                'expand': 'true'
+            }
+            with open(os.path.join(self.mdb_path, 'BrushGroup.ini'), 'w') as configfile:
+                self.brushgroupcfg.write(configfile)
+        else:
+            self.brush2cfg.read(os.path.join(self.mdb_path, 'Brush2.ini'))
+        
+        
         self.brushgroupcfg.read(os.path.join(self.mdb_path,'BrushGroup.ini'))
                 
         #dictionaries "readable name: actual section name"
@@ -89,19 +113,20 @@ class cfg_handler():#cfg handler class responsible for main functionalities
        
         #add new brushes
         for name in import_name_list:
-            section_entries = self.defaultcfg[self.default_brushes_dict[name]]
-            self.brush2cfg.add_section(str(brush_index))
-            self.brush2cfg[str(brush_index)] = section_entries
-            
-            if 'script' in section_entries:
-                BSfile_list.append(section_entries['script'])
-            elif 'bitmapfile' in section_entries:
-                BMPfile_list.append(section_entries['bitmapfile'])
-            
-            if group_section_name == '-1':#no group selected
-                group_section_name = self.brush_groups_dict['New Brushes']
-            self.brush2cfg[str(brush_index)]['group'] = group_section_name
-            brush_index += 1
+            if name not in [self.brush2cfg[section]['name'] for section in self.brush2cfg.sections()[1:]]:#no importing repeats
+                section_entries = self.defaultcfg[self.default_brushes_dict[name]]
+                self.brush2cfg.add_section(str(brush_index))
+                self.brush2cfg[str(brush_index)] = section_entries
+                
+                if 'script' in section_entries:
+                    BSfile_list.append(section_entries['script'])
+                elif 'bitmapfile' in section_entries:
+                    BMPfile_list.append(section_entries['bitmapfile'])
+                
+                if group_section_name == '-1':#no group selected
+                    group_section_name = self.brush_groups_dict['New Brushes']
+                self.brush2cfg[str(brush_index)]['group'] = group_section_name
+                brush_index += 1
             
         #write file
         with open(os.path.join(self.mdb_path, 'Brush2.ini'), 'w') as configfile:
@@ -117,19 +142,18 @@ class cfg_handler():#cfg handler class responsible for main functionalities
         
         
     def delete_brushes(self, del_index_list, file_deletion_en):
-        BSfile_list = []
-        BMPfile_list = []
-        for index in del_index_list:#remove files
-            section_entries = self.brush2cfg[str(index)]
-            if 'script' in section_entries:
-                BSfile_list.append(section_entries['script'])
-            elif 'bitmapfile' in section_entries:
-                BMPfile_list.append(section_entries['bitmapfile'])
         if file_deletion_en:
+            BSfile_list = []
+            BMPfile_list = []
+            for index in del_index_list:#remove files
+                section_entries = self.brush2cfg[str(index)]
+                if 'script' in section_entries:
+                    BSfile_list.append(section_entries['script'])
+                elif 'bitmapfile' in section_entries:
+                    BMPfile_list.append(section_entries['bitmapfile'])
             self.file_handler.remove_files(os.path.join(self.mdb_path, 'brush_script'), BSfile_list)
             self.file_handler.remove_files(os.path.join(self.mdb_path, 'brush_bitmap'), BMPfile_list)
             
-        
         for index in del_index_list:#remove sections in cfg file
             self.brush2cfg.remove_section(str(index))
             
