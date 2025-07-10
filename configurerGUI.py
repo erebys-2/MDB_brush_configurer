@@ -83,21 +83,25 @@ class MainWindow(QWidget):
         label3.setText("My Brush Groups:\n*Attribute of Brushes from 'My Brushes'")
         layout.addWidget(label3, 0, 4)
         
-        label3_0 = QLabel(self)
-        label3_0.setText("A group 'New Brushes' will automatically \nbe added on 'Import' if it doesn't exist.")
-        layout.addWidget(label3_0, 1, 4)
+        # label3_0 = QLabel(self)
+        # label3_0.setText("A group 'New Brushes' will automatically \nbe added on 'Import' if it doesn't exist.")
+        # layout.addWidget(label3_0, 1, 4)
         
-        label3_1 = QLabel(self)
-        label3_1.setText("Brushes selected from 'My Brushes' can\nbe moved into a selected 'Brush Group'.")
-        layout.addWidget(label3_1, 2, 4)
+        # label3_1 = QLabel(self)
+        # label3_1.setText("Brushes selected from 'My Brushes' can\nbe moved into a selected 'Brush Group'.")
+        # layout.addWidget(label3_1, 2, 4)
         
-        label3_2 = QLabel(self)
-        label3_2.setText("Brushes selected from 'Default Brushes' can\nbe imported into a selected 'Brush Group'.")
-        layout.addWidget(label3_2, 3, 4)
+        # label3_2 = QLabel(self)
+        # label3_2.setText("Brushes selected from 'Default Brushes' can\nbe imported into a selected 'Brush Group'.")
+        # layout.addWidget(label3_2, 3, 4)
         
         self.target_group_name_label = QLabel(self)
         self.target_group_name_label.setText(f"Target Group:\n-1: Unassigned Brushes ")
-        layout.addWidget(self.target_group_name_label, 0, 6)
+        layout.addWidget(self.target_group_name_label, 4, 4)
+        
+        brushes_in_brushlist_label = QLabel(self)
+        brushes_in_brushlist_label.setText(f"Brushes in Target Group:")
+        layout.addWidget(brushes_in_brushlist_label, 4, 5)
         
         self.default_brushes_last_sel_label = QLabel(self)
         self.default_brushes_last_sel_label.setText(f'Last Selected:\nNone')
@@ -110,34 +114,34 @@ class MainWindow(QWidget):
         #qlist widgets-----------------------------------------------------------------------------------------------------
         self.curr_brushlist = QListWidget(self)
         self.curr_brushlist.addItems(self.cfg1.current_brushes_list)
-        layout.addWidget(self.curr_brushlist, 4, 2, 4, 1)
+        layout.addWidget(self.curr_brushlist, 5, 2, 6, 1)
         self.curr_brushlist.setSelectionMode(QListWidget.SelectionMode.MultiSelection)
         
         self.default_brushlist = QListWidget(self)
         self.default_brushlist.addItems(self.cfg1.default_brushes_dict.keys())
-        layout.addWidget(self.default_brushlist, 4, 0, 4, 1)
+        layout.addWidget(self.default_brushlist, 5, 0, 6, 1)
         self.default_brushlist.setSelectionMode(QListWidget.SelectionMode.MultiSelection)
         
         self.grouplist = QListWidget(self)
         self.grouplist.addItems(self.cfg1.get_formatted_brushgroup_strlist())
-        layout.addWidget(self.grouplist, 4, 4, 4, 1)
+        layout.addWidget(self.grouplist, 6, 4, 4, 1)
         
         self.brushes_in_grouplist = QListWidget(self)
         self.brushes_in_grouplist.addItems(['Select a Brush Group',])
-        layout.addWidget(self.brushes_in_grouplist, 1, 6, 4, 1)
+        layout.addWidget(self.brushes_in_grouplist, 5, 5, 4, 1)
 
         #qpushbuttons-------------------------------------------------------------------------------
         import_button = QPushButton('Import Selected')
         import_button.clicked.connect(self.import_selected)
         layout.addWidget(import_button, 1, 0)
 
-        deselect_default_button = QPushButton('Deselect')
+        deselect_default_button = QPushButton('Deselect All')
         deselect_default_button.clicked.connect(self.deselect_from_default)
-        layout.addWidget(deselect_default_button, 2, 0)
+        layout.addWidget(deselect_default_button, 4, 0)
         
-        deselect_current_button = QPushButton('Deselect')
+        deselect_current_button = QPushButton('Deselect All')
         deselect_current_button.clicked.connect(self.deselect_from_current)
-        layout.addWidget(deselect_current_button, 2, 2)
+        layout.addWidget(deselect_current_button, 4, 2)
 
         remove_button = QPushButton('Delete Selected')
         remove_button.clicked.connect(self.remove)
@@ -145,35 +149,35 @@ class MainWindow(QWidget):
         
         self.file_deletion_en_btn = QPushButton('Enable File Deletion')
         self.file_deletion_en_btn.clicked.connect(self.toggle_file_deletion)
-        layout.addWidget(self.file_deletion_en_btn, 1, 3)
+        layout.addWidget(self.file_deletion_en_btn, 2, 2)
         
         select_unassigned_btn = QPushButton('Selected Unnassigned Brushes')
         select_unassigned_btn.clicked.connect(self.select_unassigned)
-        layout.addWidget(select_unassigned_btn, 2, 3)
+        layout.addWidget(select_unassigned_btn, 5, 4)
 
         self.details_button = QPushButton('Open Brush Compare')
         self.details_button.clicked.connect(self.open_popup)
         layout.addWidget(self.details_button, 3, 3)
         
-        self.filter_by_group_btn = QPushButton('Filter by Selected Group')
+        self.filter_by_group_btn = QPushButton("Filter 'My Brushes' by Target Group: -1")
         self.filter_by_group_btn.clicked.connect(self.filter_by_group)
         layout.addWidget(self.filter_by_group_btn, 4, 3)
         
-        move_to_group_btn = QPushButton('Send Selected Brushes\n to Target Group')
-        move_to_group_btn.clicked.connect(self.send_brushes)
-        layout.addWidget(move_to_group_btn, 1, 5)
+        self.move_to_group_btn = QPushButton('Move Selected Brushes to Target Group: -1')
+        self.move_to_group_btn.clicked.connect(self.move_brushes)
+        layout.addWidget(self.move_to_group_btn, 5, 3)
         
         add_group_btn = QPushButton('Add Brush Group')
         add_group_btn.clicked.connect(self.add_brush_group)
-        layout.addWidget(add_group_btn, 2, 5)
+        layout.addWidget(add_group_btn, 1, 4)
         
-        delete_group_btn = QPushButton('Deleted Selected Group')
+        delete_group_btn = QPushButton('Deleted Target Group')
         delete_group_btn.clicked.connect(self.delete_brush_group)
-        layout.addWidget(delete_group_btn, 3, 5)
+        layout.addWidget(delete_group_btn, 2, 4)
         
-        rename_group_btn = QPushButton('Rename Selected Group')
+        rename_group_btn = QPushButton('Rename Target Group')
         rename_group_btn.clicked.connect(self.rename_brush_group)
-        layout.addWidget(rename_group_btn, 4, 5)
+        layout.addWidget(rename_group_btn, 3, 4)
         
         #misc triggers----------------------------------------------------------------------------------------------
         self.grouplist.itemClicked.connect(self.show_brushes_in_group)
@@ -188,13 +192,9 @@ class MainWindow(QWidget):
         import_list = [x.text() for x in self.default_brushlist.selectedItems()]
         #update group list
         if self.cfg1.import_brushes(import_list, str(self.grouplist.currentRow())):#True if New Brushes group doesn't exist
-            self.grouplist.clear()
-            self.grouplist.addItems(self.cfg1.get_formatted_brushgroup_strlist())
-            
-        self.curr_brushlist.clear()
-        self.curr_brushlist.addItems(self.cfg1.current_brushes_list)
-        
-        #if self.grouplist.currentRow() != -1:
+            self.refresh_grouplist()
+          
+        self.refresh_curr_brushlist(self.cfg1.current_brushes_list)
         self.show_brushes_in_group()
         
         self.filter_active = False
@@ -270,7 +270,7 @@ class MainWindow(QWidget):
             
             
     #----------------------------------------------brush group related functions------------------------------------------
-    def send_brushes(self):
+    def move_brushes(self):
         brush_list = []
         if self.hash == None:
             brush_list = [self.curr_brushlist.row(x) for x in self.curr_brushlist.selectedItems()]
@@ -284,6 +284,15 @@ class MainWindow(QWidget):
                 self.hash.pop(self.curr_brushlist.row(selected_item))
                 self.curr_brushlist.takeItem(self.curr_brushlist.row(selected_item))
                 del selected_item
+                
+    def refresh_grouplist(self):
+        self.grouplist.clear()
+        self.grouplist.addItems(self.cfg1.get_formatted_brushgroup_strlist())
+        
+    def refresh_curr_brushlist(self, str_list):
+        self.curr_brushlist.clear()
+        self.curr_brushlist.addItems(str_list)
+
         
     def show_brushes_in_group(self):
         #update Q list
@@ -296,24 +305,25 @@ class MainWindow(QWidget):
         if self.grouplist.currentItem() != None:
             self.target_group_name_label.setText(f"Target Group:\n {self.grouplist.currentItem().text()}")
             
+        #update button text
+        self.filter_by_group_btn.setText(f"Filter 'My Brushes' by Target Group: {self.grouplist.currentRow()}")
+        self.move_to_group_btn.setText(f"Move Selected Brushes to Target Group: {self.grouplist.currentRow()}")
+            
     def add_brush_group(self):
         text, ok = QInputDialog.getText(self, 'Add New Brush Group', 'Name:')
         if ok and text:
             self.cfg1.add_group(text)
         #reset grouplist
-        self.grouplist.clear()
-        self.grouplist.addItems(self.cfg1.get_formatted_brushgroup_strlist())
-            
+        self.refresh_grouplist()
+        
     def delete_brush_group(self):
         self.cfg1.delete_group(str(self.grouplist.currentRow()))
         #reset grouplist
-        self.grouplist.clear()
-        self.grouplist.addItems(self.cfg1.get_formatted_brushgroup_strlist())
+        self.refresh_grouplist()
         self.brushes_in_grouplist.clear()
         
         #reset my brush list
-        self.curr_brushlist.clear()
-        self.curr_brushlist.addItems(self.cfg1.current_brushes_list)
+        self.refresh_curr_brushlist(self.cfg1.current_brushes_list)
         
         self.hash = None
         
@@ -331,15 +341,13 @@ class MainWindow(QWidget):
                 
     def filter_by_group(self):
         if self.filter_active:
-            self.filter_by_group_btn.setText('Filter by Selected Group')
-            self.curr_brushlist.clear()
-            self.curr_brushlist.addItems(self.cfg1.current_brushes_list)
+            self.filter_by_group_btn.setText('Filter by Target Group')
+            self.refresh_curr_brushlist(self.cfg1.current_brushes_list)
             self.hash = None
             self.filter_active = False
         else:
             self.filter_by_group_btn.setText('Clear Group Filter')
-            self.curr_brushlist.clear()
-            self.curr_brushlist.addItems(self.cfg1.get_filtered_currbrush_list(str(self.grouplist.currentRow())))
+            self.refresh_curr_brushlist(self.cfg1.get_filtered_currbrush_list(str(self.grouplist.currentRow())))
             self.hash = self.cfg1.get_relative_hash(str(self.grouplist.currentRow()))
             self.filter_active = True
             
