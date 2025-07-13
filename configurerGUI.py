@@ -179,7 +179,9 @@ class MainWindow(QWidget):
         rename_group_btn.clicked.connect(self.rename_brush_group)
         layout.addWidget(rename_group_btn, 3, 4)
         
+        color = 'ff0000'
         save_btn = QPushButton('[!] Overwrite Config [!]')
+        save_btn.setStyleSheet(f'color: #{color};')
         save_btn.clicked.connect(self.save)
         layout.addWidget(save_btn, 0, 5)
         
@@ -319,7 +321,8 @@ class MainWindow(QWidget):
             self.target_group_name_label.setText(f"Target Group:\n {self.grouplist.currentItem().text()}")
             
         #update button text
-        self.filter_by_group_btn.setText(f"[Filter] 'My Brushes' by [Target Group: {self.grouplist.currentRow()}]")
+        if not self.filter_active:
+            self.filter_by_group_btn.setText(f"[Filter] 'My Brushes' by [Target Group: {self.grouplist.currentRow()}]")
         self.move_to_group_btn.setText(f"[Move] Selected Brushes to [Target Group: {self.grouplist.currentRow()}]")
             
     def add_brush_group(self):

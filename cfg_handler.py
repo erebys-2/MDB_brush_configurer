@@ -51,7 +51,7 @@ class cfg_handler():#cfg handler class responsible for main functionalities
         else:
             self.brush2cfg.read(os.path.join(self.mdb_path, 'Brush2.ini'))
             #bring 'General' section to top
-            if self.brush2cfg.sections().index(self.brush2cfg['General']) != 0:
+            if self.brush2cfg.sections().index('General') != 0:
                 temp_cfg = cfgp.ConfigParser()
                 temp_cfg['General'] = {
                     'activeIndex': '0',
@@ -193,8 +193,10 @@ class cfg_handler():#cfg handler class responsible for main functionalities
         temp_cfg = cfgp.ConfigParser()
         if start_index == 1:#copy initial section if it exists
             temp_cfg.add_section('General') 
-            temp_cfg['General'] = cfg_['General']
-        
+            temp_cfg['General'] = {
+                'activeIndex': '0',
+                'version': '1'
+            }
         i = 0
         for section in cfg_.sections()[start_index:]:#rebuild a new cfg
             temp_cfg.add_section(str(i))
