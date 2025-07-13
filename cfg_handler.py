@@ -164,7 +164,7 @@ class cfg_handler():#cfg handler class responsible for main functionalities
                     group_section_name = self.brush_groups_dict['New Brushes']
                 self.brush2cfg[str(brush_index)]['group'] = group_section_name
                 brush_index += 1
-                    
+        self.regenerate_currbrushlist()
         return new_group_made
         
         
