@@ -5,7 +5,7 @@ from cfg_handler import cfg_handler, path_cfg_handler
 #based on https://www.pythontutorial.net/pyqt/pyqt-qlistwidget/
 
 class PopupWindow(QWidget):
-    def __init__(self, brush0, brush1, brush1_index, *args, **kwargs):
+    def __init__(self, brush0, brush1, brush1_index, defaultcfg, brush2cfg, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cfg1 = cfg_handler()
 
@@ -40,11 +40,11 @@ class PopupWindow(QWidget):
         
         #qlists
         self.curr_brushlist_details = QListWidget(self)
-        self.curr_brushlist_details.addItems(self.cfg1.get_brush_details(self.cfg1.brush2cfg, None, brush1_index))
+        self.curr_brushlist_details.addItems(self.cfg1.get_brush_details(brush2cfg, None, brush1_index))
         layout.addWidget(self.curr_brushlist_details, 4, 2, 4, 1)
         
         self.default_brushlist_details = QListWidget(self)
-        self.default_brushlist_details.addItems(self.cfg1.get_brush_details(self.cfg1.defaultcfg, self.cfg1.default_brushes_dict, brush0))
+        self.default_brushlist_details.addItems(self.cfg1.get_brush_details(defaultcfg, self.cfg1.default_brushes_dict, brush0))
         layout.addWidget(self.default_brushlist_details, 4, 0, 4, 1)
  
         #self.show()
@@ -159,11 +159,11 @@ class MainWindow(QWidget):
         self.details_button.clicked.connect(self.open_popup)
         layout.addWidget(self.details_button, 3, 3)
         
-        self.filter_by_group_btn = QPushButton("Filter 'My Brushes' by Target Group: -1")
+        self.filter_by_group_btn = QPushButton("[Filter] 'My Brushes' by [Target Group: -1]")
         self.filter_by_group_btn.clicked.connect(self.filter_by_group)
         layout.addWidget(self.filter_by_group_btn, 4, 3)
         
-        self.move_to_group_btn = QPushButton('Move Selected Brushes to Target Group: -1')
+        self.move_to_group_btn = QPushButton('[Move] Selected Brushes to [Target Group: -1]')
         self.move_to_group_btn.clicked.connect(self.move_brushes)
         layout.addWidget(self.move_to_group_btn, 5, 3)
         
@@ -178,6 +178,10 @@ class MainWindow(QWidget):
         rename_group_btn = QPushButton('Rename Target Group')
         rename_group_btn.clicked.connect(self.rename_brush_group)
         layout.addWidget(rename_group_btn, 3, 4)
+        
+        save_btn = QPushButton('[!] Overwrite Config [!]')
+        save_btn.clicked.connect(self.save)
+        layout.addWidget(save_btn, 0, 5)
         
         #misc triggers----------------------------------------------------------------------------------------------
         self.grouplist.itemClicked.connect(self.show_brushes_in_group)
@@ -208,7 +212,7 @@ class MainWindow(QWidget):
             del_list = [self.hash[self.curr_brushlist.row(x)] for x in self.curr_brushlist.selectedItems()]
         
         #print(del_list)
-        self.cfg1.delete_brushes(del_list, self.file_deletion_en)
+        self.cfg1.delete_brushes(del_list)
         
         for x in self.curr_brushlist.selectedItems():
             self.curr_brushlist.takeItem(self.curr_brushlist.row(x))
@@ -241,6 +245,13 @@ class MainWindow(QWidget):
         else:
             self.file_deletion_en = False
             self.file_deletion_en_btn.setText('Enable File Deletion')
+            
+    def save(self):
+        self.cfg1.save_changes(self.file_deletion_en)
+        msg = QMessageBox(window)
+        msg.setWindowTitle("Config Saved")
+        msg.setText("Close all windows and open Medibang to confirm changes.")
+        msg.exec()
     
     def open_popup(self):
         if self.w is None:
@@ -260,7 +271,7 @@ class MainWindow(QWidget):
                 brush1 = 'None Selected'
                 brush1_index = '0'
                 
-            self.w = PopupWindow(brush0, brush1, brush1_index)
+            self.w = PopupWindow(brush0, brush1, brush1_index, self.cfg1.defaultcfg, self.cfg1.brush2cfg)
             self.w.show()
             self.details_button.setText('Close Brush Compare')
 
@@ -284,6 +295,8 @@ class MainWindow(QWidget):
                 self.hash.pop(self.curr_brushlist.row(selected_item))
                 self.curr_brushlist.takeItem(self.curr_brushlist.row(selected_item))
                 del selected_item
+        else:
+            self.refresh_curr_brushlist(self.cfg1.current_brushes_list)
                 
     def refresh_grouplist(self):
         self.grouplist.clear()
@@ -306,8 +319,8 @@ class MainWindow(QWidget):
             self.target_group_name_label.setText(f"Target Group:\n {self.grouplist.currentItem().text()}")
             
         #update button text
-        self.filter_by_group_btn.setText(f"Filter 'My Brushes' by Target Group: {self.grouplist.currentRow()}")
-        self.move_to_group_btn.setText(f"Move Selected Brushes to Target Group: {self.grouplist.currentRow()}")
+        self.filter_by_group_btn.setText(f"[Filter] 'My Brushes' by [Target Group: {self.grouplist.currentRow()}]")
+        self.move_to_group_btn.setText(f"[Move] Selected Brushes to [Target Group: {self.grouplist.currentRow()}]")
             
     def add_brush_group(self):
         text, ok = QInputDialog.getText(self, 'Add New Brush Group', 'Name:')
@@ -341,7 +354,7 @@ class MainWindow(QWidget):
                 
     def filter_by_group(self):
         if self.filter_active:
-            self.filter_by_group_btn.setText('Filter by Target Group')
+            self.filter_by_group_btn.setText(f"[Filter] 'My Brushes' by [Target Group: {self.grouplist.currentRow()}]")
             self.refresh_curr_brushlist(self.cfg1.current_brushes_list)
             self.hash = None
             self.filter_active = False
@@ -401,6 +414,7 @@ class ini_window(QWidget):
             self.main_window = MainWindow()
             self.main_window.show()
             self.launch_btn.setText('Un-Launch Main Window')
+            self.hide()
         else:
             self.main_window = None
             self.launch_btn.setText('Launch Main Window')

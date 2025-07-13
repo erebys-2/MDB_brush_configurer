@@ -12,6 +12,7 @@ Install:
 2. Enter path to Medibang's config folder, usually at C:\Users\[username]\AppData\Local\Medibang\CloudAlpaca
 3. Back up your current 'Brush2.ini' and 'BrushGroups.ini' files by copying into a separate directory (Optional but strongly reccomended)
 4. Run program
+5. Click overwrite button to save changes, exiting without clicking the overwrite button will not modify files
 
 Functionality:
 -Import brushes selected from 'Default.ini' into user's local 'Brush2.ini' and their respective scripts or bitmaps (will not import repeats)
@@ -26,8 +27,3 @@ Current Limitations:
 
 Notes:
 -Only run program when Medibang Paint is closed
-
-*For totally new Medibang installs only that haven't run yet
--The 'General' section in Brush2.ini initially gets moved to the end of the file after Medibang initially downloads brushes.
- Solution: Close and reopen Medibang twice and then make sure it appears to the top of the file.
- Having an incorrectly placed 'General' section will most likely crash the program since indexing will be off.

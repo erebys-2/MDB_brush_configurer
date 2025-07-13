@@ -34,7 +34,13 @@ class cfg_handler():#cfg handler class responsible for main functionalities
         self.brush2cfg = cfgp.ConfigParser()
         self.brushgroupcfg = cfgp.ConfigParser()
         
-        #add ini files if not present
+        self.BMPfile_delete_list = []
+        self.BMPfile_copy_list = []
+        
+        self.BSfile_delete_list = []
+        self.BSfile_copy_list = []
+        
+        #add ini files if not present directly to mdb_path
         if 'Brush2.ini' not in os.listdir(self.mdb_path):
             self.brush2cfg['General'] = {
                 'activeIndex': '0',
@@ -44,6 +50,17 @@ class cfg_handler():#cfg handler class responsible for main functionalities
                 self.brush2cfg.write(configfile)
         else:
             self.brush2cfg.read(os.path.join(self.mdb_path, 'Brush2.ini'))
+            #bring 'General' section to top
+            if self.brush2cfg.sections().index(self.brush2cfg['General']) != 0:
+                temp_cfg = cfgp.ConfigParser()
+                temp_cfg['General'] = {
+                    'activeIndex': '0',
+                    'version': '1'
+                }
+                for section in self.brush2cfg:
+                    if section != 'General':
+                        temp_cfg[section] = self.brush2cfg[section]
+                self.brush2cfg = temp_cfg
         
         if 'BrushGroup.ini' not in os.listdir(self.mdb_path):
             self.brushgroupcfg['0'] = {
@@ -53,24 +70,43 @@ class cfg_handler():#cfg handler class responsible for main functionalities
             with open(os.path.join(self.mdb_path, 'BrushGroup.ini'), 'w') as configfile:
                 self.brushgroupcfg.write(configfile)
         else:
-            self.brush2cfg.read(os.path.join(self.mdb_path, 'Brush2.ini'))
+            self.brushgroupcfg.read(os.path.join(self.mdb_path, 'BrushGroup.ini'))
+            
         
-        
-        self.brushgroupcfg.read(os.path.join(self.mdb_path,'BrushGroup.ini'))
                 
         #dictionaries "readable name: actual section name"
         self.default_brushes_dict = self.create_brush_dict(self.defaultcfg, 1)
         self.brush_groups_dict = self.create_brush_dict(self.brushgroupcfg, 0)
         
         #list where str(index) is the actual section name
-        self.current_brushes_list = [f'{self.brush2cfg[section]['name']}, group {self.brush2cfg[section]['group']}' for section in self.brush2cfg.sections()[1:]]
-            
-            
+        self.current_brushes_list = self.current_brushes_list = [f'{self.brush2cfg[section]['name']}, group {self.brush2cfg[section]['group']}' for section in self.brush2cfg.sections()[1:]]
+        
+        
+    #writes into csv files and copies/deletes files
+    def save_changes(self, file_deletion_en):
+        #regenerate sections
+        self.brush2cfg = self.regenerate_sections(self.brush2cfg, 1)
+        self.brushgroupcfg = self.regenerate_sections(self.brushgroupcfg, 0)
+        
+        #write config files
+        with open(os.path.join(self.mdb_path, 'Brush2.ini'), 'w') as configfile:
+            self.brush2cfg.write(configfile)
+        with open(os.path.join(self.mdb_path, 'BrushGroup.ini'), 'w') as configfile:
+            self.brushgroupcfg.write(configfile)
+
+        #copy and delete files
+        self.file_handler.copy_files('src\\brush_script_src', os.path.join(self.mdb_path, 'brush_script'), self.BSfile_copy_list)
+        self.file_handler.copy_files('src\\brush_bitmap_src', os.path.join(self.mdb_path, 'brush_bitmap'), self.BMPfile_copy_list)
+        if file_deletion_en:
+            self.file_handler.remove_files(os.path.join(self.mdb_path, 'brush_script'), self.BSfile_delete_list)
+            self.file_handler.remove_files(os.path.join(self.mdb_path, 'brush_bitmap'), self.BMPfile_delete_list)
+
+    
+    #creates formatted str list of brush names
     def regenerate_currbrushlist(self):
         self.current_brushes_list = [f'{self.brush2cfg[section]['name']}, group {self.brush2cfg[section]['group']}' for section in self.brush2cfg.sections()[1:]]
         
     #get list of brush names w/o repeats from the default ini file and w/ repeats for current ini file
-
     def create_brush_dict(self, cfg_, start_index):
         temp_name_dict = {}
         for section in cfg_.sections()[start_index:]:#section is a string
@@ -78,6 +114,7 @@ class cfg_handler():#cfg handler class responsible for main functionalities
                 
         return temp_name_dict
     
+    #return str list of entries in a section
     def get_brush_details(self, cfg_, brush_dict, brush_name):
         temp_list = []
         
@@ -99,14 +136,11 @@ class cfg_handler():#cfg handler class responsible for main functionalities
         self.brush2cfg.read(os.path.join(self.mdb_path,'Brush2.ini'))
         self.brush2cfg['General']['activeindex'] = '0'
         self.regenerate_currbrushlist()
-        #self.current_brushes_list = [f'{self.brush2cfg[section]['name']}, group {self.brush2cfg[section]['group']}' for section in self.brush2cfg.sections()[1:]]
-            
+
         
     def import_brushes(self, import_name_list, group_section_name):
         new_group_made = self.add_group('New Brushes')#create new brush group for new brushes if it doesn't exist
-        BSfile_list = []
-        BMPfile_list = []
-        
+
         #update config file------------------------------------------------
         #get brush index (last brush)
         brush_index = len(self.brush2cfg.sections()[1:])
@@ -118,53 +152,43 @@ class cfg_handler():#cfg handler class responsible for main functionalities
                 self.brush2cfg.add_section(str(brush_index))
                 self.brush2cfg[str(brush_index)] = section_entries
                 
+                #add files to copy to copy list; remove instances in delete list
                 if 'script' in section_entries:
-                    BSfile_list.append(section_entries['script'])
+                    self.BSfile_copy_list.append(section_entries['script'])
+                    self.BSfile_delete_list = [file for file in self.BSfile_delete_list if file != section_entries['script']]
                 elif 'bitmapfile' in section_entries:
-                    BMPfile_list.append(section_entries['bitmapfile'])
+                    self.BMPfile_copy_list.append(section_entries['bitmapfile'])
+                    self.BMPfile_delete_list = [file for file in self.BMPfile_delete_list if file != section_entries['bitmapfile']]
                 
                 if group_section_name == '-1':#no group selected
                     group_section_name = self.brush_groups_dict['New Brushes']
                 self.brush2cfg[str(brush_index)]['group'] = group_section_name
                 brush_index += 1
-            
-        #write file
-        with open(os.path.join(self.mdb_path, 'Brush2.ini'), 'w') as configfile:
-            self.brush2cfg.write(configfile)
-        
-        self.update_current_brushes()
-        
-        #check brush files and add if it exists in src and not found in dest---------------------------------
-        self.file_handler.copy_files('src\\brush_script_src', os.path.join(self.mdb_path, 'brush_script'), BSfile_list)
-        self.file_handler.copy_files('src\\brush_bitmap_src', os.path.join(self.mdb_path, 'brush_bitmap'), BMPfile_list)
-        
+                    
         return new_group_made
         
         
-    def delete_brushes(self, del_index_list, file_deletion_en):
-        if file_deletion_en:
-            BSfile_list = []
-            BMPfile_list = []
-            for index in del_index_list:#remove files
-                section_entries = self.brush2cfg[str(index)]
-                if 'script' in section_entries:
-                    BSfile_list.append(section_entries['script'])
-                elif 'bitmapfile' in section_entries:
-                    BMPfile_list.append(section_entries['bitmapfile'])
-            self.file_handler.remove_files(os.path.join(self.mdb_path, 'brush_script'), BSfile_list)
-            self.file_handler.remove_files(os.path.join(self.mdb_path, 'brush_bitmap'), BMPfile_list)
-            
+    def delete_brushes(self, del_index_list):
+        #if file_deletion_en:
+        for index in del_index_list:#remove files
+            #append files to delete list; remove instances from import list
+            section_entries = self.brush2cfg[str(index)]
+            if 'script' in section_entries:
+                self.BSfile_delete_list.append(section_entries['script'])
+                self.BSfile_copy_list = [file for file in self.BSfile_copy_list if file != section_entries['script']]
+            elif 'bitmapfile' in section_entries:
+                self.BMPfile_delete_list.append(section_entries['bitmapfile'])
+                self.BMPfile_copy_list = [file for file in self.BMPfile_copy_list if file != section_entries['bitmapfile']]
+                    
         for index in del_index_list:#remove sections in cfg file
             self.brush2cfg.remove_section(str(index))
             
-        temp_cfg = self.regenerate_sections(self.brush2cfg, 1)#reorder sections
+        self.brush2cfg = self.regenerate_sections(self.brush2cfg, 1)
+        #print([section for section in self.brush2cfg])
+
         
-        with open(os.path.join(self.mdb_path, 'Brush2.ini'), 'w') as configfile:#write file
-                temp_cfg.write(configfile)
- 
-        self.update_current_brushes()
-        
-        
+    #cfg files are structured with sections being ordered integers
+    #after a section deletion, this is called to reorder the sections
     def regenerate_sections(self, cfg_, start_index):
         temp_cfg = cfgp.ConfigParser()
         if start_index == 1:#copy initial section if it exists
@@ -179,24 +203,24 @@ class cfg_handler():#cfg handler class responsible for main functionalities
             
         return temp_cfg
     
-    #brush group related
+    #==========================================================brush group related=========================================================
+    
+    #brushes are typically selected by row index, which corresponds to section
+    #when filtering by group, the 1:1 correspondance is lost and needs a hash
     def get_relative_hash(self, group_section_name):
         return [int(section) for section in self.brush2cfg.sections()[1:] if self.brush2cfg[section]['group'] == group_section_name]
         
+    #returns a formatted str list of brushes when filtered
     def get_filtered_currbrush_list(self, group_section_name):
         return [f'{self.brush2cfg[section]['name']}, group {self.brush2cfg[section]['group']}' for section in self.brush2cfg.sections()[1:] 
                 if self.brush2cfg[section]['group'] == group_section_name]
     
-    
-    
-    
-    def set_brush_group(self, brush_name_section_list, group_section_name):
-        for section in brush_name_section_list:
+    #sets brush group entry of sections selected
+    def set_brush_group(self, brush_section_name_list, group_section_name):
+        for section in brush_section_name_list:
             self.brush2cfg[str(section)]['group'] = group_section_name
-            
-        with open(os.path.join(self.mdb_path, 'Brush2.ini'), 'w') as configfile:
-            self.brush2cfg.write(configfile)
-            
+        self.regenerate_currbrushlist()
+        
         
     def add_group(self, group_name):
         success = False
@@ -205,9 +229,7 @@ class cfg_handler():#cfg handler class responsible for main functionalities
             self.brushgroupcfg.add_section(section_name)
             self.brushgroupcfg[section_name]['name'] = group_name
             self.brushgroupcfg[section_name]['expand'] = 'false'
-            with open(os.path.join(self.mdb_path, 'BrushGroup.ini'), 'w') as configfile:
-                self.brushgroupcfg.write(configfile)
-            
+
             self.brush_groups_dict[group_name] = section_name #update dictionary
             success = True
         return success
@@ -224,27 +246,17 @@ class cfg_handler():#cfg handler class responsible for main functionalities
                     self.brush2cfg[section]['group'] = '-1'
                 if int(self.brush2cfg[section]['group']) > int(section_name):#move up groups of other brushes
                     self.brush2cfg[section]['group'] = str(int(self.brush2cfg[section]['group']) - 1)
-            with open(os.path.join(self.mdb_path, 'Brush2.ini'), 'w') as configfile:
-                self.brush2cfg.write(configfile)
+
             self.regenerate_currbrushlist()
-                
             self.brushgroupcfg.remove_section(section_name)#remove section
-            
-            temp_cfg = self.regenerate_sections(self.brushgroupcfg, 0)#reorder sections
-            with open(os.path.join(self.mdb_path, 'BrushGroup.ini'), 'w') as configfile:
-                temp_cfg.write(configfile)
-                
-        del self.brushgroupcfg #some object problem in python makes it so I need to manually recreate the obj..?
-        self.brushgroupcfg = cfgp.ConfigParser()
-        self.brushgroupcfg.read(os.path.join(self.mdb_path,'BrushGroup.ini'))
+            self.brushgroupcfg = self.regenerate_sections(self.brushgroupcfg, 0)#reorder sections
         
         self.brush_groups_dict = self.create_brush_dict(self.brushgroupcfg, 0)#recreate dictionary
+        #print([section for section in self.brushgroupcfg])
         
     def rename_group(self, section_name, new_readable_name):
         if section_name in self.brush_groups_dict.values():
             self.brushgroupcfg[section_name]['name'] = new_readable_name
-            with open(os.path.join(self.mdb_path, 'BrushGroup.ini'), 'w') as configfile:
-                self.brushgroupcfg.write(configfile)
                 
             self.brush_groups_dict = self.create_brush_dict(self.brushgroupcfg, 0)#recreate dictionary
         
