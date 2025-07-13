@@ -10,7 +10,7 @@ class PopupWindow(QWidget):
         self.cfg1 = cfg_handler()
 
         self.setWindowTitle('Brush Comparison')
-        self.setWindowIcon(QIcon('./src/brushcfg_icon2.png'))
+        self.setWindowIcon(QIcon('./src/brushcfg_icon2.ico'))
         self.setGeometry(100, 100, 720, 400)
 
         layout = QGridLayout(self)
@@ -64,7 +64,7 @@ class MainWindow(QWidget):
         self.file_deletion_en = False
 
         self.setWindowTitle('Brush Config Manager: Main Window')
-        self.setWindowIcon(QIcon('./src/brushcfg_icon2.png'))
+        self.setWindowIcon(QIcon('./src/brushcfg_icon2.ico'))
         self.setGeometry(100, 100, 1080, 480)
 
         layout = QGridLayout(self)
@@ -379,7 +379,7 @@ class ini_window(QWidget):
         self.cfg0 = path_cfg_handler()
         
         self.setWindowTitle('Brush Config Manager: Path Selection')
-        self.setWindowIcon(QIcon('./src/brushcfg_icon2.png'))
+        self.setWindowIcon(QIcon('./src/brushcfg_icon2.ico'))
         self.setGeometry(100, 100, 400, 100)
 
         layout = QGridLayout(self)
