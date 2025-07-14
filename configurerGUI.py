@@ -1,11 +1,12 @@
 import sys
+import os
 from PyQt6.QtWidgets import QInputDialog, QApplication, QWidget, QGridLayout, QListWidget, QPushButton, QLabel, QMessageBox, QLineEdit
 from PyQt6.QtGui import QIcon
 from cfg_handler import cfg_handler, path_cfg_handler
 #based on https://www.pythontutorial.net/pyqt/pyqt-qlistwidget/
 
 class PopupWindow(QWidget):
-    def __init__(self, brush0, brush1, brush1_index, defaultcfg, brush2cfg, *args, **kwargs):
+    def __init__(self, brush0, brush1, brush1_index, newcfg, brush2cfg, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cfg1 = cfg_handler()
 
@@ -18,11 +19,11 @@ class PopupWindow(QWidget):
         
         #qlabels
         label = QLabel(self)
-        label.setText("Comparing Brushes that were last clicked from\n'Default Brushes' and 'My Brushes'.\n\nClick 'Compare Brushes' button on main window to reset.")
+        label.setText("Comparing Brushes that were last clicked from\n'New Brushes' and 'My Brushes'.\n\nClick 'Compare Brushes' button on main window to reset.")
         layout.addWidget(label)
         
         label1 = QLabel(self)
-        label1.setText("From Default Brushes:")
+        label1.setText("From New Brushes:")
         layout.addWidget(label1, 1, 0)
         
         label2 = QLabel(self)
@@ -43,9 +44,9 @@ class PopupWindow(QWidget):
         self.curr_brushlist_details.addItems(self.cfg1.get_brush_details(brush2cfg, None, brush1_index))
         layout.addWidget(self.curr_brushlist_details, 4, 2, 4, 1)
         
-        self.default_brushlist_details = QListWidget(self)
-        self.default_brushlist_details.addItems(self.cfg1.get_brush_details(defaultcfg, self.cfg1.default_brushes_dict, brush0))
-        layout.addWidget(self.default_brushlist_details, 4, 0, 4, 1)
+        self.new_brushlist_details = QListWidget(self)
+        self.new_brushlist_details.addItems(self.cfg1.get_brush_details(newcfg, self.cfg1.new_brushes_dict, brush0))
+        layout.addWidget(self.new_brushlist_details, 4, 0, 4, 1)
  
         #self.show()
 
@@ -63,7 +64,7 @@ class MainWindow(QWidget):
         
         self.file_deletion_en = False
 
-        self.setWindowTitle('Brush Config Manager: Main Window')
+        self.setWindowTitle(f"Brush Config Manager: Main Window, Importing from '{self.cfg1.import_path}' to '{self.cfg1.mdb_path}'")
         self.setWindowIcon(QIcon('./src/brushcfg_icon2.ico'))
         self.setGeometry(100, 100, 1080, 480)
 
@@ -72,7 +73,7 @@ class MainWindow(QWidget):
         
         #qlabels--------------------------------------------------------------------------------------------
         label = QLabel(self)
-        label.setText("Default Brushes:")
+        label.setText("New Brushes:")
         layout.addWidget(label, 0, 0)
         
         label2 = QLabel(self)
@@ -82,19 +83,7 @@ class MainWindow(QWidget):
         label3 = QLabel(self)
         label3.setText("My Brush Groups:\n*Attribute of Brushes from 'My Brushes'")
         layout.addWidget(label3, 0, 4)
-        
-        # label3_0 = QLabel(self)
-        # label3_0.setText("A group 'New Brushes' will automatically \nbe added on 'Import' if it doesn't exist.")
-        # layout.addWidget(label3_0, 1, 4)
-        
-        # label3_1 = QLabel(self)
-        # label3_1.setText("Brushes selected from 'My Brushes' can\nbe moved into a selected 'Brush Group'.")
-        # layout.addWidget(label3_1, 2, 4)
-        
-        # label3_2 = QLabel(self)
-        # label3_2.setText("Brushes selected from 'Default Brushes' can\nbe imported into a selected 'Brush Group'.")
-        # layout.addWidget(label3_2, 3, 4)
-        
+
         self.target_group_name_label = QLabel(self)
         self.target_group_name_label.setText(f"Target Group:\n-1: Unassigned Brushes ")
         layout.addWidget(self.target_group_name_label, 4, 4)
@@ -103,9 +92,9 @@ class MainWindow(QWidget):
         brushes_in_brushlist_label.setText(f"Brushes in Target Group:")
         layout.addWidget(brushes_in_brushlist_label, 4, 5)
         
-        self.default_brushes_last_sel_label = QLabel(self)
-        self.default_brushes_last_sel_label.setText(f'Last Selected:\nNone')
-        layout.addWidget(self.default_brushes_last_sel_label, 3, 0)
+        self.new_brushes_last_sel_label = QLabel(self)
+        self.new_brushes_last_sel_label.setText(f'Last Selected:\nNone')
+        layout.addWidget(self.new_brushes_last_sel_label, 3, 0)
         
         self.my_brushes_last_sel_label = QLabel(self)
         self.my_brushes_last_sel_label.setText(f'Last Selected:\nNone')
@@ -117,10 +106,10 @@ class MainWindow(QWidget):
         layout.addWidget(self.curr_brushlist, 5, 2, 6, 1)
         self.curr_brushlist.setSelectionMode(QListWidget.SelectionMode.MultiSelection)
         
-        self.default_brushlist = QListWidget(self)
-        self.default_brushlist.addItems(self.cfg1.default_brushes_dict.keys())
-        layout.addWidget(self.default_brushlist, 5, 0, 6, 1)
-        self.default_brushlist.setSelectionMode(QListWidget.SelectionMode.MultiSelection)
+        self.new_brushlist = QListWidget(self)
+        self.new_brushlist.addItems(self.cfg1.new_brushes_dict.keys())
+        layout.addWidget(self.new_brushlist, 5, 0, 6, 1)
+        self.new_brushlist.setSelectionMode(QListWidget.SelectionMode.MultiSelection)
         
         self.grouplist = QListWidget(self)
         self.grouplist.addItems(self.cfg1.get_formatted_brushgroup_strlist())
@@ -135,9 +124,9 @@ class MainWindow(QWidget):
         import_button.clicked.connect(self.import_selected)
         layout.addWidget(import_button, 1, 0)
 
-        deselect_default_button = QPushButton('Deselect All')
-        deselect_default_button.clicked.connect(self.deselect_from_default)
-        layout.addWidget(deselect_default_button, 4, 0)
+        deselect_new_button = QPushButton('Deselect All')
+        deselect_new_button.clicked.connect(self.deselect_from_new)
+        layout.addWidget(deselect_new_button, 4, 0)
         
         deselect_current_button = QPushButton('Deselect All')
         deselect_current_button.clicked.connect(self.deselect_from_current)
@@ -188,14 +177,14 @@ class MainWindow(QWidget):
         #misc triggers----------------------------------------------------------------------------------------------
         self.grouplist.itemClicked.connect(self.show_brushes_in_group)
         self.curr_brushlist.itemClicked.connect(self.update_last_selected_brush_current)
-        self.default_brushlist.itemClicked.connect(self.update_last_selected_brush_default)
+        self.new_brushlist.itemClicked.connect(self.update_last_selected_brush_new)
         
         self.show_brushes_in_group()
         
     #-------------------------------brush related functions--------------------------------------------------------------------
     def import_selected(self):
         #only import brushes that don't already exist in my brushes
-        import_list = [x.text() for x in self.default_brushlist.selectedItems()]
+        import_list = [x.text() for x in self.new_brushlist.selectedItems()]
         #update group list
         if self.cfg1.import_brushes(import_list, str(self.grouplist.currentRow())):#True if New Brushes group doesn't exist
             self.refresh_grouplist()
@@ -222,16 +211,16 @@ class MainWindow(QWidget):
         
         self.show_brushes_in_group()
         
-    def deselect_from_default(self):
-        for x in self.default_brushlist.selectedItems():
+    def deselect_from_new(self):
+        for x in self.new_brushlist.selectedItems():
             x.setSelected(False)
             
     def deselect_from_current(self):
         for x in self.curr_brushlist.selectedItems():
             x.setSelected(False)
             
-    def update_last_selected_brush_default(self):
-        self.default_brushes_last_sel_label.setText(f'Last Selected:\n{self.default_brushlist.currentItem().text()}')
+    def update_last_selected_brush_new(self):
+        self.new_brushes_last_sel_label.setText(f'Last Selected:\n{self.new_brushlist.currentItem().text()}')
         
     def update_last_selected_brush_current(self):
         self.my_brushes_last_sel_label.setText(f'Last Selected:\n{self.curr_brushlist.currentItem().text()}')
@@ -240,7 +229,7 @@ class MainWindow(QWidget):
         if not self.file_deletion_en:
             msg = QMessageBox(window)
             msg.setWindowTitle("Warning")
-            msg.setText("Enabling file deletion will delete brush scripts and bitmaps from your local directory in addition to removing them from the config files.\n\nThis software only has replacement files for the brushes in 'Default Brushes'.")
+            msg.setText("Enabling file deletion will delete brush scripts and bitmaps from your local directory in addition to removing them from the config files.\n\nThis software only has replacement files for the brushes in 'New Brushes'.")
             msg.exec()
             self.file_deletion_en_btn.setText('Disable File Deletion')
             self.file_deletion_en = True
@@ -257,8 +246,8 @@ class MainWindow(QWidget):
     
     def open_popup(self):
         if self.w is None:
-            if self.default_brushlist.currentItem() != None:
-                brush0 = self.default_brushlist.currentItem().text()
+            if self.new_brushlist.currentItem() != None:
+                brush0 = self.new_brushlist.currentItem().text()
             else:
                 brush0 = 'None Selected'
                 
@@ -273,7 +262,7 @@ class MainWindow(QWidget):
                 brush1 = 'None Selected'
                 brush1_index = '0'
                 
-            self.w = PopupWindow(brush0, brush1, brush1_index, self.cfg1.defaultcfg, self.cfg1.brush2cfg)
+            self.w = PopupWindow(brush0, brush1, brush1_index, self.cfg1.newcfg, self.cfg1.brush2cfg)
             self.w.show()
             self.details_button.setText('Close Brush Compare')
 
@@ -380,7 +369,7 @@ class ini_window(QWidget):
         
         self.setWindowTitle('Brush Config Manager: Path Selection')
         self.setWindowIcon(QIcon('./src/brushcfg_icon2.ico'))
-        self.setGeometry(100, 100, 400, 100)
+        self.setGeometry(100, 100, 400, 200)
 
         layout = QGridLayout(self)
         self.setLayout(layout)
@@ -388,30 +377,46 @@ class ini_window(QWidget):
         #qlabels
         label = QLabel(self)
         label.setText("Input Path to Medibang Config File:")
+        label.setStyleSheet(f'color: yellow;')
         layout.addWidget(label, 0, 0)
-        
-        self.pathTextBox = QLineEdit(self)
-        #self.pathTextBox.textChanged.connect(self.updatepath)
-        layout.addWidget(self.pathTextBox, 1, 0)
 
         label2 = QLabel()
-        label2.setText('Typical Path: C:\\Users\\[your username]\\AppData\\Local\\Medibang\\CloudAlpaca\n\nDemo Path: src\\demo')
+        label2.setText('        Typical Path: C:\\Users\\[your username]\\AppData\\Local\\Medibang\\CloudAlpaca\n        Demo Path: src\\demo\n')
         layout.addWidget(label2, 3, 0)
         
+        self.label3 = QLabel()
+        self.label3.setText(f"Current Path: '{self.cfg0.get_curr_path()}'")
+        self.label3.setStyleSheet(f'color: yellow;')
+        layout.addWidget(self.label3, 2, 0)
+        
+        self.brushlist_select_label = QLabel()
+        self.brushlist_select_label.setText(f"Selected a Brush List to Import from:\nCurrent Brush List: '{self.cfg0.get_import_path()[16:]}'")
+        self.brushlist_select_label.setStyleSheet(f'color: yellow;')
+        layout.addWidget(self.brushlist_select_label, 4, 0)
+        
+        #q buttons
         self.launch_btn = QPushButton('Launch Main Window')
         self.launch_btn.clicked.connect(self.launch_program)
         layout.addWidget(self.launch_btn, 1, 1)
         
-        self.label3 = QLabel()
-        self.label3.setText(f'Current Path: {self.cfg0.get_curr_path()}\n')
-        layout.addWidget(self.label3, 2, 0)
+        #q line edit
+        self.pathTextBox = QLineEdit(self)
+        #self.pathTextBox.textChanged.connect(self.updatepath)
+        layout.addWidget(self.pathTextBox, 1, 0)
+        
+        #qlist
+        self.brushlist_select = QListWidget(self)
+        self.brushlist_select.addItems(os.listdir('src/brush_lists'))
+        layout.addWidget(self.brushlist_select, 5, 0)
+        
+        self.brushlist_select.itemClicked.connect(self.update_import_path)
         
         self.show()
         
     def launch_program(self):
         if self.pathTextBox.text() != '':#set new path if provided
-            self.label3.setText(f'Current Path: {self.pathTextBox.text()}')
-            self.cfg0.set_curr_path(self.pathTextBox.text())
+            self.label3.setText(f"Current Path: '{self.pathTextBox.text()}'")
+            self.cfg0.set_path('Medibang Config Path', self.pathTextBox.text())
             
         if self.main_window is None:
             self.main_window = MainWindow()
@@ -422,6 +427,10 @@ class ini_window(QWidget):
             self.main_window = None
             self.launch_btn.setText('Launch Main Window')
     
+    def update_import_path(self):
+        if self.brushlist_select.currentRow() != -1:
+            self.cfg0.set_path('Import Path', os.path.join('src\\brush_lists', self.brushlist_select.currentItem().text()))
+            self.brushlist_select_label.setText(f"Selected a Brush List to Import from:\nCurrent Brush List: '{self.brushlist_select.currentItem().text()}'")
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

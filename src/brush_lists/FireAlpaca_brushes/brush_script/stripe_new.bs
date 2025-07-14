@@ -1,0 +1,130 @@
+function default_name()
+  local s = "Stripe"
+  if bs_lang() == "ja" then
+    s = "ストライプ"
+  end
+  return s
+end
+
+function default_size()
+  return 100, 0.8
+end
+
+function param1()
+  local s = "Width 1"
+  if bs_lang() == "ja" then
+    s = "幅1"
+  end
+  return s, 1, 100, 10
+end
+
+function param2()
+  local s = "Width 2"
+  if bs_lang() == "ja" then
+    s = "幅2"
+  end
+  return s, 1, 100, 10
+end
+
+function param3()
+  local s = "Vertical Stripe"
+  if bs_lang() == "ja" then
+    s = "縦縞"
+  end
+  return s, 0, 1, 0
+end
+
+-- Original implementation of circle drawing
+function draw_circle( mx, my, r, alpha )
+
+  local rr = r * r
+  local rrdif = rr - (r - 1) * (r - 1)
+
+  for j=my-r, my+r do
+    for i=mx-r, mx+r do
+      local d = (mx - i) * (mx - i) + (my - j) * (my - j)
+      if d < r * r then
+        local pixAlpha = alpha
+        local dif = rr - d
+        if dif < rrdif then
+          pixAlpha = dif * pixAlpha / rrdif
+        end
+        bs_pixel_set( i, j, 0, 0, 0, pixAlpha )
+      end
+    end
+  end
+end
+
+-- Original implementation of circle drawing
+function draw_stripe( mx, my, r, alpha )
+
+  local rr = r * r
+  local rrdif = rr - (r - 1) * (r - 1)
+
+  local p1 = bs_param1()
+  local p2 = bs_param2()
+  local n = p1 + p2
+
+  local vert = bs_param3()
+
+  for j=my-r, my+r do
+    for i=mx-r, mx+r do
+      local d = (mx - i) * (mx - i) + (my - j) * (my - j)
+      if d < r * r then
+        local pixAlpha = alpha
+        local dif = rr - d
+        if dif < rrdif then
+          pixAlpha = dif * pixAlpha / rrdif
+        end
+
+        local red, green, blue = bs_bg()
+
+        if vert == 0 then
+          if j % n < p1 then
+            red, green, blue = bs_fore()
+          end
+        end
+        if vert == 1 then
+          if i % n < p1 then
+            red, green, blue = bs_fore()
+          end
+        end
+
+        bs_pixel_set( i, j, red, green, blue, pixAlpha )
+      end
+    end
+  end
+end
+
+-- Main Function
+function main( x, y, p )
+
+  local w = bs_width()
+  if w < 10 then
+    w = 10
+  end
+
+  if not firstDraw then
+    local interval = 0.1
+    local d = (w/2 + lastW/2) * interval
+    local distance = bs_distance( lastDrawX - x, lastDrawY - y )
+    if distance < d then
+      return 0
+    end
+  end
+
+  -- Draw Stripe
+  draw_stripe( x, y, w/2, 255 )
+
+  lastDrawX = x
+  lastDrawY = y
+  lastW = w
+  firstDraw = false
+
+  return 1
+end
+
+lastDrawX = 0
+lastDrawY = 0
+lastW = 0
+firstDraw = true

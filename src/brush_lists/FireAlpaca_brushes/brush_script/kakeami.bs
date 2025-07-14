@@ -1,0 +1,73 @@
+function default_name()
+  local s = "Kakeami"
+  if bs_lang() == "ja" then
+    s = "カケアミ"
+  end
+  return s
+end
+
+function default_size()
+  return 50, 0.8
+end
+
+function set_line( w )
+  bs_polygon( 0.0, -0.05 )
+  bs_polygon( 0.2, -0.05 )
+  bs_polygon( 1.0, 0.0 )
+  bs_polygon( 0.2, 0.05 )
+  bs_polygon( 0.0, 0.05 )
+  bs_polygon( -0.2, 0.05 )
+  bs_polygon( -1.0, 0.0 )
+  bs_polygon( -0.2, -0.05 )
+  bs_polygon( 0.0, -0.05 )
+  bs_polygon_mul( w*3, w )
+end
+
+function main( x, y, p )
+
+  local w = bs_width_max() * 0.25
+  if w < 5 then
+    w = 5
+  end
+
+  if not firstDraw then
+    local distance = bs_distance( lastDrawX - x, lastDrawY - y )
+    if distance < w*4.20 then
+      return 0
+    end
+  end
+
+  local r,g,b = bs_fore()
+  local dx,dy = bs_dir()
+  local nx,ny = bs_normal()
+
+  local i
+  for i=0,6 do
+    local idx = i - 3
+    set_line( w )
+    bs_polygon_move( 0, -idx*w*3/5 )
+    bs_polygon_rotate( bs_atan( dx, dy ) + 0 )
+    bs_polygon_move( x, y )
+    bs_fill( r,g,b, 255 )
+  end
+
+  for i=0,6 do
+    local idx = i - 3
+    set_line( w )
+    bs_polygon_move( 0, -idx*w*3/5 )
+    bs_polygon_rotate( bs_atan( dx, dy ) + 3.14159/2 )
+    bs_polygon_move( x, y )
+    bs_fill( r,g,b, 255 )
+  end
+
+  lastDrawX = x
+  lastDrawY = y
+  firstDraw = false
+
+  return 1
+end
+
+bs_setmode( 1 )
+lastDrawX = 0
+lastDrawY = 0
+firstDraw = true

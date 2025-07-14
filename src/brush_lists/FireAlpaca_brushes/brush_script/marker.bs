@@ -1,0 +1,80 @@
+function default_name()
+  local s = "Marker"
+  if bs_lang() == "ja" then
+    s = "マーカー"
+  end
+  return s
+end
+
+function param1()
+  local s = "Angle"
+  if bs_lang() == "ja" then
+    s = "角度"
+  end
+  return s, 0, 100, 0
+end
+
+function param2()
+  local s = "Opacity by Pressure"
+  if bs_lang() == "ja" then
+    s = "筆圧透明度"
+  end
+  return s, 0, 1, 0
+end
+
+function main( x, y, p )
+
+  local w = bs_width() / 2
+  if w < 0.25 then
+    w = 0.25
+  end
+
+  local updateDist = w / 2
+  if w > 5 then
+    updateDist = w/4
+  end
+  if w > 20 then
+    updateDist = w/10
+  end
+  if w > 100 then
+    updateDist = w/14
+  end
+
+  if not firstDraw then
+    local distance = bs_distance( lastDrawX - x, lastDrawY - y )
+    if distance < updateDist then
+      return 0
+    end
+  end
+
+  local r,g,b = bs_fore()
+
+  local vx,vy = bs_rotate( 1, 0, bs_param1()*3.14159/2/100 )
+  vx = vx * w / 2.0
+  vy = vy * w / 2.0
+
+  local a = bs_opaque() * 255
+  if bs_param2() == 1 then
+    a = p * a
+  end
+
+  bs_ellipse( x + vx, y + vy, w*sr0,w*sr0, 0, r,g,b, a )
+  bs_ellipse( x,y, w*sr1,w*sr1, 0, r,g,b, a )
+  bs_ellipse( x - vx, y - vy, w*sr2,w*sr2, 0, r,g,b, a )
+
+  lastDrawX = x
+  lastDrawY = y
+  firstDraw = false
+
+  return 1
+end
+
+bs_setmode( 1 )
+lastDrawX = 0
+lastDrawY = 0
+firstDraw = true
+
+math.randomseed( bs_ms() )
+sr0 = 1.0 + 0.2*math.random() - 0.1
+sr1 = 1.0 + 0.2*math.random() - 0.1
+sr2 = 1.0 + 0.2*math.random() - 0.1

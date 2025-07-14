@@ -1,0 +1,70 @@
+function default_name()
+  local s = "Electronic Signage"
+  if bs_lang() == "ja" then
+    s = "電光掲示板"
+  end
+  return s
+end
+
+function param1()
+  local s = "Opacity by Pressure"
+  if bs_lang() == "ja" then
+    s = "筆圧透明度"
+  end
+  return s, 0, 1, 0
+end
+
+function param2()
+  local s = "Size"
+  if bs_lang() == "ja" then
+    s = "サイズ"
+  end
+  return s, 10, 100, 95
+end
+
+function main( x, y, p )
+
+  local m = bs_width_max()
+  if m < 5 then
+    m = 5
+  end
+  local m2 = m / 2
+
+  local tw = math.floor( bs_canvas_width() / m )
+  local th = math.floor( bs_canvas_height() / m )
+  local tx = math.floor( x / m )
+  local ty = math.floor( y / m )
+
+  local idx = tw * ty + tx
+  if idx == lastIndex then
+    return 1
+  end
+  lastIndex = idx
+
+  if ary[idx] == nil then
+    ary[idx] = 0
+  end
+
+  if ary[idx] >= p then
+    return 1
+  end
+  ary[idx] = p
+
+  local dx = m * tx + m2
+  local dy = m * ty + m2
+  local s = m * bs_param2() / 100
+
+  local r,g,b = bs_fore()
+  local a = 255 * bs_opaque()
+  if bs_param1() == 1 then
+    a = p * a
+  end
+
+  bs_ellipse( dx, dy, s, s, 0, r, g, b, a )
+
+  return 1
+end
+
+bs_setmode( 1 )
+ary = {}
+lastIndex = -1

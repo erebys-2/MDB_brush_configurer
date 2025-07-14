@@ -1,0 +1,111 @@
+function default_name()
+  local s = "Symmetry Rotate 2"
+  if bs_lang() == "ja" then
+    s = "回転対称 2"
+  end
+  return s
+end
+
+function use_base()
+  return true
+end
+
+function param1()
+  local s = "Number of Lines"
+  if bs_lang() == "ja" then
+    s = "数"
+  end
+  return s, 2, 32, 5
+end
+
+function param2()
+  local s = "Opacity by Pressure"
+  if bs_lang() == "ja" then
+    s = "筆圧透明度"
+  end
+  return s, 0, 1, 0
+end
+
+function main( x, y, p )
+
+  if firstDraw then
+    firstDrawX = x
+    firstDrawY = y
+  end
+
+  local w = bs_width()
+  if w < 0.25 then
+    w = 0.25
+  end
+
+  local updateDist = w / 4
+  if w > 20 then
+    updateDist = w/10
+  end
+  if w > 100 then
+    updateDist = w/14
+  end
+
+  if not firstDraw then
+    local distance = bs_distance( lastDrawX - x, lastDrawY - y )
+    if distance < updateDist then
+      return 0
+    end
+  end
+
+  local bsx,bsy = bs_base()
+  local noInit = (bsx == -1) and (bsy == -1)
+  if noInit then
+    bsx = firstDrawX
+    bsy = firstDrawY
+  end
+
+  local num = bs_param1()
+  local r,g,b = bs_fore()
+
+  local a = bs_opaque() * 255
+  if bs_param2() == 1 then
+    a = p * a
+  end
+
+  local pi2 = 3.141592 * 2
+  local sepAngle = pi2 / num
+  local deg90 = pi2 / 4
+
+  local dx = x - bsx
+  local dy = y - bsy
+  local rad = bs_atan( dx, dy )
+
+  -- 基点からの距離
+  local len = bs_distance( bsx - x, bsy - y )
+
+  -- ベースからの角度
+  local baseDif = deg90 - rad
+
+  local i
+  for i=0,num-1 do
+    local radBase = sepAngle * i + deg90
+
+    local vx = len * math.cos( radBase + baseDif )
+    local vy = len * math.sin( radBase + baseDif )
+    bs_ellipse( bsx + vx, bsy + vy, w,w, 0, r,g,b, a )
+
+    vx = len * math.cos( radBase - baseDif )
+    vy = len * math.sin( radBase - baseDif )
+    bs_ellipse( bsx + vx, bsy + vy, w,w, 0, r,g,b, a )
+  end
+
+  lastDrawX = x
+  lastDrawY = y
+  firstDraw = false
+
+  return 1
+end
+
+bs_setmode( 1 )
+lastDrawX = 0
+lastDrawY = 0
+firstDraw = true
+
+firstDrawX = 0
+firstDrawY = 0
