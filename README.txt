@@ -23,13 +23,15 @@ Functionality:
 -Import brushes selected from a brush list folder into user's local 'Brush2.ini' and their respective scripts or bitmaps (does not import repeats)
 -Mass import brushes from FireAlpaca
 -Edit brush groups in user's local 'BrushGroups.ini' and assign brushes to groups (repeat groups ignored)
+-Duplicating selected brushes
 -Quick compare for brush config code
 
 Current Limitations:
 -Cannot import brushes and files outside of those in src; you need to manually place files in before runtime
 -Currently depends on an existing .xml or .ini file to get brush parameters
--Cannot rename or duplicate brushes or change order within a group
+-Cannot rename brushes or change order within a group
 -Cannot change order of brush groups
+-**FireAlpaca brushes not guaranteed to work properly due to Medibang brushes not having a texture parameter
 
 ===========================================================================================================
 How to add brush lists:
