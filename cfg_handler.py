@@ -58,6 +58,9 @@ class cfg_handler():#cfg handler class responsible for main functionalities
         self.BSfile_delete_list = []
         self.BSfile_copy_list = []
         
+        self.TEXfile_delete_list = []
+        self.TEXfile_copy_list = []
+        
         #add ini files if not present directly to mdb_path
         if 'Brush2.ini' not in os.listdir(self.mdb_path):
             self.brush2cfg['General'] = {
@@ -70,12 +73,12 @@ class cfg_handler():#cfg handler class responsible for main functionalities
             self.brush2cfg.read(os.path.join(self.mdb_path, 'Brush2.ini'), encoding='UTF-8')
             #bring 'General' section to top
             if self.brush2cfg.sections().index('General') != 0:
-                temp_cfg = cfgp.ConfigParser()
+                temp_cfg = cfgp.ConfigParser()#create tempcfg with general section
                 temp_cfg['General'] = {
                     'activeIndex': '0',
                     'version': '1'
                 }
-                for section in self.brush2cfg:
+                for section in self.brush2cfg:#move sections that aren't general over to tempcfg
                     if section != 'General':
                         temp_cfg[section] = self.brush2cfg[section]
                 self.brush2cfg = temp_cfg
@@ -118,6 +121,16 @@ class cfg_handler():#cfg handler class responsible for main functionalities
         if file_deletion_en:
             self.file_handler.remove_files(os.path.join(self.mdb_path, 'brush_script'), self.BSfile_delete_list)
             self.file_handler.remove_files(os.path.join(self.mdb_path, 'brush_bitmap'), self.BMPfile_delete_list)
+            
+        if 'brush_texture' in os.listdir(self.mdb_path):
+            self.file_handler.copy_files(os.path.join(self.import_path, 'brush_texture'), os.path.join(self.mdb_path, 'brush_texture'), self.TEXfile_copy_list)
+            if file_deletion_en:
+                self.file_handler.remove_files(os.path.join(self.mdb_path, 'brush_texture'), self.TEXfile_delete_list)
+        elif self.TEXfile_copy_list != []:#the brush_texture directory doens't exist and the copy file list isn't empty
+            os.mkdir(os.path.join(self.mdb_path, 'brush_texture'))
+            self.file_handler.copy_files(os.path.join(self.import_path, 'brush_texture'), os.path.join(self.mdb_path, 'brush_texture'), self.TEXfile_copy_list)
+            
+        
 
     
     #creates formatted str list of brush names
@@ -169,6 +182,10 @@ class cfg_handler():#cfg handler class responsible for main functionalities
                 elif 'bitmapfile' in section_entries:
                     self.BMPfile_copy_list.append(section_entries['bitmapfile'])
                     self.BMPfile_delete_list = [file for file in self.BMPfile_delete_list if file != section_entries['bitmapfile']]
+                    
+                if 'texfile' in section_entries:
+                    self.TEXfile_copy_list.append(section_entries['texfile'])
+                    self.TEXfile_delete_list = [file for file in self.TEXfile_delete_list if file != section_entries['texfile']]
                 
                 if group_section_name == '-1':#no group selected
                     group_section_name = self.brush_groups_dict['New Brushes']
@@ -189,6 +206,10 @@ class cfg_handler():#cfg handler class responsible for main functionalities
             elif 'bitmapfile' in section_entries:
                 self.BMPfile_delete_list.append(section_entries['bitmapfile'])
                 self.BMPfile_copy_list = [file for file in self.BMPfile_copy_list if file != section_entries['bitmapfile']]
+                
+            if 'texfile' in section_entries:
+                self.TEXfile_delete_list.append(section_entries['texfile'])
+                self.TEXfile_copy_list = [file for file in self.TEXfile_copy_list if file != section_entries['texfile']]
                     
         for index in del_index_list:#remove sections in cfg file
             self.brush2cfg.remove_section(str(index))
@@ -233,6 +254,14 @@ class cfg_handler():#cfg handler class responsible for main functionalities
             self.brush2cfg[str(section)]['group'] = group_section_name
         self.regenerate_currbrushlist()
         
+    def copy_brushes_to_group(self, brush_section_name_list, group_section_name):
+        i = len(self.brush2cfg.sections()[1:])
+        for section in brush_section_name_list:
+            self.brush2cfg.add_section(str(i))
+            self.brush2cfg[str(i)] = self.brush2cfg[str(section)]
+            self.brush2cfg[str(i)]['group'] = group_section_name
+            i+=1
+        self.regenerate_currbrushlist()
         
     def add_group(self, group_name):
         success = False
