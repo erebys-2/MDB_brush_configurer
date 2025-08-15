@@ -6,7 +6,7 @@ class file_handler():
         pass
     #notes for implementing import brushes:
     #
-    #When you import a brush through medibang it automatically appends an arbitrary 10 digit number infront of the brush name.
+    #When you import a brush through medibang it automatically appends an arbitrary 10 digit number infront of the brush file name.
     #This is probably to prevent name conflicts for original brushes but can potentially be a pain in the ass.
     #
     #Need to analyze brush scripts to get an idea of how to write a config file section for a brush...
@@ -16,11 +16,27 @@ class file_handler():
     def has_file(self, src_path, file_name):#returns path to file if found
         return file_name in os.listdir(src_path)
     
-    def copy_files(self, src_path, dest_path, file_name_list):
-        if file_name_list != []:
-            for file_name in file_name_list:
-                if self.has_file(src_path, file_name) and not self.has_file(dest_path, file_name):
-                    shutil.copy(os.path.join(src_path, file_name), dest_path)#shutil copy file to directory
+    def get_new_name(self, src_path, file_name):
+        n = 0
+        i = 0
+        for char in file_name:
+            if char == '.':
+                break
+            i += 1
+        name = file_name[:i]
+        ext = file_name[i:]
+        
+        while file_name in os.listdir(src_path):
+            n += 1
+            file_name = name + '_' + str(n) + ext
+            
+        return file_name
+    
+    def copy_files(self, src_path, dest_path, file_name_dict):
+        if file_name_dict != {}:
+            for file_name in file_name_dict:
+                if self.has_file(src_path, file_name):# and not self.has_file(dest_path, file_name):
+                    shutil.copy(os.path.join(src_path, file_name), os.path.join(dest_path, file_name_dict[file_name]))#shutil copy file to directory
                 #     print(f'copy {file_name} success')
                 # else:
                 #     print(f'copy {file_name} failed: in src={self.has_file(src_path, file_name)}, not in dest={not self.has_file(dest_path, file_name)}')

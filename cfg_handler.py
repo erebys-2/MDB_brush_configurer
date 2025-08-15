@@ -46,6 +46,18 @@ class cfg_handler():#cfg handler class responsible for main functionalities
                 section += 1 
             with open(os.path.join(self.import_path, 'Brush2.ini'), 'w', encoding='UTF-8') as configfile:
                 self.newcfg.write(configfile)
+                
+        # elif self.import_path == 'src/brush_lists/DIRECT_IMPORT':
+        #     self.newcfg['General'] = {
+        #         'activeIndex': '0',
+        #         'version': '1'
+        #     }
+        #     section = 0
+        #     for brush_datadict in #self.xml_handler.brush_list:
+        #         self.newcfg[str(section)] = brush_datadict
+        #         section += 1 
+        #     with open(os.path.join(self.import_path, 'Brush2.ini'), 'w', encoding='UTF-8') as configfile:
+        #         self.newcfg.write(configfile)
         
         self.newcfg.read(f'{self.import_path}/Brush2.ini', encoding='UTF-8')
         
@@ -53,13 +65,12 @@ class cfg_handler():#cfg handler class responsible for main functionalities
         self.brushgroupcfg = cfgp.ConfigParser()
         
         self.BMPfile_delete_list = []
-        self.BMPfile_copy_list = []
-        
+        self.BMPfile_copy_dict = {}
         self.BSfile_delete_list = []
-        self.BSfile_copy_list = []
+        self.BSfile_copy_dict = {}
         
-        self.TEXfile_delete_list = []
-        self.TEXfile_copy_list = []
+        # self.TEXfile_delete_list = []
+        # self.TEXfile_copy_list = []
         
         #add ini files if not present directly to mdb_path
         if 'Brush2.ini' not in os.listdir(self.mdb_path):
@@ -116,19 +127,25 @@ class cfg_handler():#cfg handler class responsible for main functionalities
             self.brushgroupcfg.write(configfile)
         
         #copy and delete files
-        self.file_handler.copy_files(os.path.join(self.import_path, 'brush_script'), os.path.join(self.mdb_path, 'brush_script'), self.BSfile_copy_list)
-        self.file_handler.copy_files(os.path.join(self.import_path, 'brush_bitmap'), os.path.join(self.mdb_path, 'brush_bitmap'), self.BMPfile_copy_list)
+        self.file_handler.copy_files(os.path.join(self.import_path, 'brush_script'), os.path.join(self.mdb_path, 'brush_script'), self.BSfile_copy_dict)
+        self.file_handler.copy_files(os.path.join(self.import_path, 'brush_bitmap'), os.path.join(self.mdb_path, 'brush_bitmap'), self.BMPfile_copy_dict)
         if file_deletion_en:
             self.file_handler.remove_files(os.path.join(self.mdb_path, 'brush_script'), self.BSfile_delete_list)
             self.file_handler.remove_files(os.path.join(self.mdb_path, 'brush_bitmap'), self.BMPfile_delete_list)
             
-        if 'brush_texture' in os.listdir(self.mdb_path):
-            self.file_handler.copy_files(os.path.join(self.import_path, 'brush_texture'), os.path.join(self.mdb_path, 'brush_texture'), self.TEXfile_copy_list)
-            if file_deletion_en:
-                self.file_handler.remove_files(os.path.join(self.mdb_path, 'brush_texture'), self.TEXfile_delete_list)
-        elif self.TEXfile_copy_list != []:#the brush_texture directory doens't exist and the copy file list isn't empty
-            os.mkdir(os.path.join(self.mdb_path, 'brush_texture'))
-            self.file_handler.copy_files(os.path.join(self.import_path, 'brush_texture'), os.path.join(self.mdb_path, 'brush_texture'), self.TEXfile_copy_list)
+        # if 'brush_texture' in os.listdir(self.mdb_path):
+        #     self.file_handler.copy_files(os.path.join(self.import_path, 'brush_texture'), os.path.join(self.mdb_path, 'brush_texture'), self.TEXfile_copy_list)
+        #     if file_deletion_en:
+        #         self.file_handler.remove_files(os.path.join(self.mdb_path, 'brush_texture'), self.TEXfile_delete_list)
+        # elif self.TEXfile_copy_list != []:#the brush_texture directory doens't exist and the copy file list isn't empty
+        #     os.mkdir(os.path.join(self.mdb_path, 'brush_texture'))
+        #     self.file_handler.copy_files(os.path.join(self.import_path, 'brush_texture'), os.path.join(self.mdb_path, 'brush_texture'), self.TEXfile_copy_list)
+        
+        #reset dictionaries and lists
+        self.BMPfile_delete_list = []
+        self.BMPfile_copy_dict = {}
+        self.BSfile_delete_list = []
+        self.BSfile_copy_dict = {}
             
         
 
@@ -170,22 +187,28 @@ class cfg_handler():#cfg handler class responsible for main functionalities
        
         #add new brushes
         for name in import_name_list:
-            if name not in [self.brush2cfg[section]['name'] for section in self.brush2cfg.sections()[1:]]:#no importing repeats
-                section_entries = self.newcfg[self.new_brushes_dict[name]]
+            #if name not in [self.brush2cfg[section]['name'] for section in self.brush2cfg.sections()[1:]]:#no importing repeats
+            section_entries = self.newcfg[self.new_brushes_dict[name]]
+            if (('script' in section_entries and section_entries['script'] not in self.BSfile_copy_dict) or 
+                ('bitmapfile' in section_entries and section_entries['bitmapfile'] not in self.BMPfile_copy_dict)
+                ):
                 self.brush2cfg.add_section(str(brush_index))
                 self.brush2cfg[str(brush_index)] = section_entries
                 
-                #add files to copy to copy list; remove instances in delete list
-                if 'script' in section_entries:
-                    self.BSfile_copy_list.append(section_entries['script'])
-                    self.BSfile_delete_list = [file for file in self.BSfile_delete_list if file != section_entries['script']]
-                elif 'bitmapfile' in section_entries:
-                    self.BMPfile_copy_list.append(section_entries['bitmapfile'])
-                    self.BMPfile_delete_list = [file for file in self.BMPfile_delete_list if file != section_entries['bitmapfile']]
+                #add files to copy to copy list
+                if 'script' in section_entries:#copying files operates on unmodified names
+                    new_name = self.file_handler.get_new_name(os.path.join(self.mdb_path, 'brush_script'), section_entries['script'])
+                    self.BSfile_copy_dict[section_entries['script']] = new_name
+                    self.brush2cfg[str(brush_index)]['script'] = new_name
                     
-                if 'texfile' in section_entries:
-                    self.TEXfile_copy_list.append(section_entries['texfile'])
-                    self.TEXfile_delete_list = [file for file in self.TEXfile_delete_list if file != section_entries['texfile']]
+                elif 'bitmapfile' in section_entries:
+                    new_name = self.file_handler.get_new_name(os.path.join(self.mdb_path, 'brush_bitmap'), section_entries['bitmapfile'])
+                    self.BMPfile_copy_dict[section_entries['bitmapfile']] = new_name
+                    self.brush2cfg[str(brush_index)]['bitmapfile'] = new_name
+
+                # if 'texfile' in section_entries:
+                #     self.TEXfile_copy_list.append(section_entries['texfile'])
+                    #self.TEXfile_delete_list = [file for file in self.TEXfile_delete_list if file != section_entries['texfile']]
                 
                 if group_section_name == '-1':#no group selected
                     group_section_name = self.brush_groups_dict['New Brushes']
@@ -195,21 +218,20 @@ class cfg_handler():#cfg handler class responsible for main functionalities
         return new_group_made
         
         
-    def delete_brushes(self, del_index_list):
+    def delete_brushes(self, del_index_list):#operates on actual brush names
         #if file_deletion_en:
         for index in del_index_list:#remove files
-            #append files to delete list; remove instances from import list
+            #append files to delete list
             section_entries = self.brush2cfg[str(index)]
             if 'script' in section_entries:
                 self.BSfile_delete_list.append(section_entries['script'])
-                self.BSfile_copy_list = [file for file in self.BSfile_copy_list if file != section_entries['script']]
+                
             elif 'bitmapfile' in section_entries:
                 self.BMPfile_delete_list.append(section_entries['bitmapfile'])
-                self.BMPfile_copy_list = [file for file in self.BMPfile_copy_list if file != section_entries['bitmapfile']]
                 
-            if 'texfile' in section_entries:
-                self.TEXfile_delete_list.append(section_entries['texfile'])
-                self.TEXfile_copy_list = [file for file in self.TEXfile_copy_list if file != section_entries['texfile']]
+            # if 'texfile' in section_entries:
+            #     self.TEXfile_delete_list.append(section_entries['texfile'])
+                #self.TEXfile_copy_list = [file for file in self.TEXfile_copy_list if file != section_entries['texfile']]
                     
         for index in del_index_list:#remove sections in cfg file
             self.brush2cfg.remove_section(str(index))
