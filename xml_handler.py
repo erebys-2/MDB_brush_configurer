@@ -39,6 +39,8 @@ class xml_handler():
         output_dict = {key: input_dict[key] for key in param_order_list if key in input_dict}
         #add remaining keys
         output_dict.update({key: input_dict[key] for key in input_dict if key not in param_order_list})
+        
+        #update 
         return output_dict
             
     def format_brush_list(self, brush_list):
@@ -48,17 +50,30 @@ class xml_handler():
             'minR': 'min',
             'alpha': 'opacity',
             'pressWidth': 'psize',
-            'pressTrans': 'palpha'
+            'pressTrans': 'palpha',
+            'softedge': 'pedge'
         }
 
         for brush in brush_list:
             tempdict = {}
-            for param in brush:
-                if param in param_map:#translate differences in parameters
+            for param in brush:#translate differences in parameters
+                if param in param_map:
                     tempdict[param_map[param]] = str(brush[param])
                 elif param == 'file':
                     tempdict[self.specify_file_type(brush[param])] = str(brush[param])
-                else:
+                elif param[:6] == 'option':
+                    if param == 'option0':
+                        tempdict['option'] = str(brush[param])
+                    else:
+                        tempdict[f'option{int(param[6:])+1}'] = str(brush[param])
+                elif param == 'type':
+                    if str(brush[param]) == 'bitmapwc':
+                        tempdict[param] = 'bitmapWc'
+                    elif str(brush[param]) == 'roller':
+                        tempdict[param] = 'bitmap'
+                    else:
+                        tempdict[param] = str(brush[param])
+                elif param in ('name', 'irinuki'):#do not add all FA params
                     tempdict[param] = str(brush[param])
             #add medibang specific params:
             tempdict['cloudid'] = '-1'
