@@ -19,7 +19,7 @@ class xml_handler():
         key = ''
         if '.bs' in file_name:
             key = 'script'
-        elif '.mdp' in file_name or '.png' in file_name:
+        elif '.mdp' in file_name or '.png' in file_name or '.PNG' in file_name:
             key = 'bitmapfile'
         return key
     

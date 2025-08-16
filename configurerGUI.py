@@ -441,15 +441,29 @@ class ini_window(QWidget):
         if self.pathTextBox.text() != '':#set new path if provided
             self.label3.setText(f"Current Path: '{self.pathTextBox.text()}'")
             self.cfg0.set_path('Medibang Config Path', self.pathTextBox.text())
+        
+        curr_path = self.cfg0.get_curr_path()
+        if os.path.exists(curr_path) and 'Brush2.ini' in os.listdir(curr_path):
+                
+            if self.main_window is None:
+                self.main_window = MainWindow()
+                self.main_window.show()
+                self.launch_btn.setText('Un-Launch Main Window')
+                self.hide()
+            else:
+                self.main_window = None
+                self.launch_btn.setText('Launch Main Window')
+        elif not os.path.exists(curr_path):
+            msg = QMessageBox(window)
+            msg.setWindowTitle("Error")
+            msg.setText("Path does not exist, try again.")
+            msg.exec()
+        elif 'Brush2.ini' not in os.listdir(curr_path):
+            msg = QMessageBox(window)
+            msg.setWindowTitle("Error")
+            msg.setText("Brush2.ini does not exist in specified path. This is probably not the config folder.")
+            msg.exec()
             
-        if self.main_window is None:
-            self.main_window = MainWindow()
-            self.main_window.show()
-            self.launch_btn.setText('Un-Launch Main Window')
-            self.hide()
-        else:
-            self.main_window = None
-            self.launch_btn.setText('Launch Main Window')
     
     def update_import_path(self):
         if self.brushlist_select.currentRow() != -1:

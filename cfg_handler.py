@@ -47,17 +47,30 @@ class cfg_handler():#cfg handler class responsible for main functionalities
             with open(os.path.join(self.import_path, 'Brush2.ini'), 'w', encoding='UTF-8') as configfile:
                 self.newcfg.write(configfile)
                 
-        # elif self.import_path == 'src/brush_lists/DIRECT_IMPORT':
-        #     self.newcfg['General'] = {
-        #         'activeIndex': '0',
-        #         'version': '1'
-        #     }
-        #     section = 0
-        #     for brush_datadict in #self.xml_handler.brush_list:
-        #         self.newcfg[str(section)] = brush_datadict
-        #         section += 1 
-        #     with open(os.path.join(self.import_path, 'Brush2.ini'), 'w', encoding='UTF-8') as configfile:
-        #         self.newcfg.write(configfile)
+        elif self.file_handler.check_for_loose_files(self.import_path):#check if current brush list directory has loose brush files eg .bs, .mdp, .png
+            brush_list = self.file_handler.create_brush_list_from_files(self.import_path)#create list of dictionaries using inferred default values
+            
+            if 'Brush2.ini' not in os.listdir(self.import_path):#create new Brush2.ini if not found
+                self.newcfg['General'] = {
+                    'activeIndex': '0',
+                    'version': '1'
+                }
+                section = 0
+                for brush_datadict in brush_list:
+                    self.newcfg[str(section)] = brush_datadict
+                    section += 1 
+                with open(os.path.join(self.import_path, 'Brush2.ini'), 'w', encoding='UTF-8') as configfile:
+                    self.newcfg.write(configfile)
+            else:
+                self.newcfg.read(f'{self.import_path}/Brush2.ini', encoding='UTF-8')
+                section = len(self.newcfg.sections()[1:])
+                for brush_datadict in brush_list:
+                    self.newcfg[str(section)] = brush_datadict
+                    section += 1 
+                with open(os.path.join(self.import_path, 'Brush2.ini'), 'w', encoding='UTF-8') as configfile:
+                    self.newcfg.write(configfile)
+                
+            self.file_handler.organize_brush_list_folder(self.import_path)
         
         self.newcfg.read(f'{self.import_path}/Brush2.ini', encoding='UTF-8')
         
