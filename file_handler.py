@@ -24,15 +24,28 @@ class file_handler():
             i += 1
         return(file_name[:i], file_name[i:])
     
-    def get_new_name(self, src_path, file_name):
+    def get_new_filename(self, str_list, file_name):
         n = 0
         name, ext = self.get_name_and_ext(file_name)
         
-        while file_name in os.listdir(src_path):
+        while file_name in str_list:
             n += 1
             file_name = name + '_' + str(n) + ext
             
         return file_name
+    
+    def rename_file(self, src_path, dest_path):
+        os.rename(src_path, dest_path)
+        
+    def move_file(self, src_path, dest_path):
+        shutil.move(src_path, dest_path)
+        
+    def move_files(self, src_path, dest_path):
+        for file_name in os.listdir(src_path):
+            newfile_name = self.get_new_filename(os.listdir(dest_path), file_name)#rename file if it is a duplicate
+            if newfile_name != file_name:
+                print(f'{file_name} already exists in directory; will be renamed to {newfile_name}')
+            shutil.move(os.path.join(src_path, file_name), os.path.join(dest_path, newfile_name))
     
     def check_for_loose_files(self, src_path):
         found = False
@@ -87,38 +100,38 @@ class file_handler():
         return rtn_list
         
     
-    def organize_brush_list_folder(self, src_path, has_dupes):#call after creating a cfg file
+    def organize_brush_list_folder(self, src_path):#call after creating a cfg file
         #check for and create directories
         if 'brush_script' not in os.listdir(src_path):
             os.mkdir(os.path.join(src_path, 'brush_script'))
         if 'brush_bitmap' not in os.listdir(src_path):
             os.mkdir(os.path.join(src_path, 'brush_bitmap'))
-        if has_dupes and 'duplicate_files' not in os.listdir(src_path):
-            os.mkdir(os.path.join(src_path, 'duplicate_files'))
+        # if has_dupes and 'duplicate_files' not in os.listdir(src_path):
+        #     os.mkdir(os.path.join(src_path, 'duplicate_files'))
         
         #move brushes into respective folders
         for file_name in os.listdir(src_path):
             name, ext = self.get_name_and_ext(file_name)
             file_path = os.path.join(src_path, file_name)
-            if has_dupes:
-                dupes_path = os.path.join(src_path, 'duplicate_files')
+            # if has_dupes:
+            #     dupes_path = os.path.join(src_path, 'duplicate_files')
                 
             if ext == '.bs':
                 copy_path = os.path.join(src_path, 'brush_script')
                 if not self.has_file(copy_path, file_name):
                     shutil.move(file_path, copy_path)
-                elif has_dupes:
-                    shutil.move(file_path, dupes_path)
-                else:
-                    os.remove(file_path)
+                # elif has_dupes:
+                #     shutil.move(file_path, dupes_path)
+                # else:
+                #     os.remove(file_path)
             elif ext in ('.PNG', '.png', '.mdp'):
                 copy_path = os.path.join(src_path, 'brush_bitmap')
                 if not self.has_file(copy_path, file_name):
                     shutil.move(file_path, copy_path)
-                elif has_dupes:
-                    shutil.move(file_path, dupes_path)
-                else:
-                    os.remove(file_path)
+                # elif has_dupes:
+                #     shutil.move(file_path, dupes_path)
+                # else:
+                #     os.remove(file_path)
                 
                 
     

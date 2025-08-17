@@ -39,15 +39,32 @@ class cfg_handler():#cfg handler class responsible for main functionalities
         brush_list = []
         section = 0
         loose_files_present = self.file_handler.check_for_loose_files(self.import_path)
+        brushlist_state = self.check_brushlist_contents(self.import_path)
+        if brushlist_state:
+            print('Warning: .ini or .xml file not provided, brush importing is more accurate with a .ini or .xml file')
 
         if 'Brush2.ini' not in os.listdir(self.import_path) and 'BrushNew.xml' in os.listdir(self.import_path):#Fire Alpaca uses xml to store brush config data, generate ini from xml
             self.newcfg['General'] = {
                 'activeIndex': '0',
                 'version': '1'
             }
-            brush_list = self.xml_handler.brush_list
+            
+            brush_list = self.xml_handler.brush_list#generates from xml file
+            print('Warning: Loose brush files will not be processed when generating a .ini file from a .xml file')
+            # if loose_files_present:#add to it if loose files present
+            #     for tempdict in self.file_handler.create_brush_list_from_files(self.import_path):
+            #         brush_list.append(tempdict)
  
-        elif loose_files_present:#check if current brush list directory has loose brush files eg .bs, .mdp, .png
+        elif (loose_files_present or 
+              brushlist_state
+              ):
+            #check if current brush list directory has loose brush files eg .bs, .mdp, .png
+            if brushlist_state:
+                if os.path.exists(os.path.join(self.import_path, 'brush_script')):
+                    self.file_handler.move_files(os.path.join(self.import_path, 'brush_script'), self.import_path)
+                if os.path.exists(os.path.join(self.import_path, 'brush_bitmap')):
+                    self.file_handler.move_files(os.path.join(self.import_path, 'brush_bitmap'), self.import_path)
+                
             brush_list = self.file_handler.create_brush_list_from_files(self.import_path)#create list of dictionaries using inferred default values
             
             if 'Brush2.ini' not in os.listdir(self.import_path):#create new Brush2.ini if not found
@@ -55,38 +72,50 @@ class cfg_handler():#cfg handler class responsible for main functionalities
                     'activeIndex': '0',
                     'version': '1'
                 }
+
             else:
                 self.newcfg.read(f'{self.import_path}/Brush2.ini', encoding='UTF-8')
                 section = len(self.newcfg.sections()[1:])
                 
                 for sec in self.newcfg.sections()[1:]:
-                    file_name = self.get_filename_from_brush_datadict(self.newcfg[sec])
+                    file_type, file_name = self.get_filename_from_brush_datadict(self.newcfg[sec])
                     if file_name != '':
                         file_name_list.append(file_name)
+                        
+        
                 
         if brush_list != []:
             print('Building Brush2.ini...')
-            has_dupes = False
+            #update_file_name_list = file_name_list == []
+
             for brush_datadict in brush_list:#
-                file_name = self.get_filename_from_brush_datadict(brush_datadict)
+                file_type, file_name = self.get_filename_from_brush_datadict(brush_datadict)
+                new_file_name = ''
         
                 if file_name not in file_name_list or file_name == '':
-                    self.newcfg[str(section)] = brush_datadict
-                    section += 1 
                     if file_name == '':
                         file_name = f"[Brush Name]: {brush_datadict['name']}"
                     print(f'{file_name} successfully added to Brush2.ini')
                 else:
-                    print(f'{file_name} already exists in Brush2.ini; will be moved into the duplicate_files folder')
-                    has_dupes = True
+                    new_file_name = self.file_handler.get_new_filename(file_name_list, file_name)
+                    self.file_handler.rename_file(os.path.join(self.import_path, file_name), os.path.join(self.import_path, new_file_name))
+                    print(f'{file_name} already exists in Brush2.ini; will be renamed to {new_file_name}')
+
+                self.newcfg[str(section)] = brush_datadict
+                if new_file_name != '':
+                    self.newcfg[str(section)][file_type] = new_file_name
+                    
+                # if update_file_name_list and file_type != 'N/A':
+                #     file_name_list.append(self.newcfg[str(section)][file_type])
+                section += 1 
+            
+            if self.file_handler.check_for_loose_files(self.import_path) and not ('Brush2.ini' not in os.listdir(self.import_path) and 'BrushNew.xml' in os.listdir(self.import_path)):
+                self.file_handler.organize_brush_list_folder(self.import_path)
+                
             with open(os.path.join(self.import_path, 'Brush2.ini'), 'w', encoding='UTF-8') as configfile:
                 self.newcfg.write(configfile)
-            
-            if loose_files_present:
-                self.file_handler.organize_brush_list_folder(self.import_path, has_dupes)
                     
             
-        
         self.newcfg.read(f'{self.import_path}/Brush2.ini', encoding='UTF-8')
         
         self.brush2cfg = cfgp.ConfigParser()
@@ -142,46 +171,58 @@ class cfg_handler():#cfg handler class responsible for main functionalities
         self.current_brushes_list = self.current_brushes_list = [f'{self.brush2cfg[section]['name']}, group {self.brush2cfg[section]['group']}' for section in self.brush2cfg.sections()[1:]]
         
     def get_filename_from_brush_datadict(self, input_dict):
-        rtn_str = ''
+        filename = ''
+        filetype = 'N/A'
         if 'bitmapfile' in input_dict.keys():
-            rtn_str = input_dict['bitmapfile']
+            filename = input_dict['bitmapfile']
+            filetype = 'bitmapfile'
         elif 'script' in input_dict.keys():
-            rtn_str = input_dict['script']
+            filename = input_dict['script']
+            filetype = 'script'
             
-        return rtn_str
+        return (filetype, filename)
+    
+    def check_brushlist_contents(self, src_path):
+        file_list = os.listdir(src_path)
+        return 'Brush2.ini' not in file_list and 'BrushNew.xml' not in file_list and ('brush_script' in file_list or 'brush_bitmap' in file_list)
     
     #writes into csv files and copies/deletes files
     def save_changes(self, file_deletion_en):
-        #regenerate sections
-        self.brush2cfg = self.regenerate_sections(self.brush2cfg, 1)
-        self.brushgroupcfg = self.regenerate_sections(self.brushgroupcfg, 0)
+        if os.path.exists(self.import_path, 'brush_script') and os.path.exists(self.import_path, 'brush_bitmap'):
         
-        #write config files
-        with open(os.path.join(self.mdb_path, 'Brush2.ini'), 'w', encoding='UTF-8') as configfile:
-            self.brush2cfg.write(configfile)
-        with open(os.path.join(self.mdb_path, 'BrushGroup.ini'), 'w', encoding='UTF-8') as configfile:
-            self.brushgroupcfg.write(configfile)
-        
-        #copy and delete files
-        self.file_handler.copy_files(os.path.join(self.import_path, 'brush_script'), os.path.join(self.mdb_path, 'brush_script'), self.BSfile_copy_dict)
-        self.file_handler.copy_files(os.path.join(self.import_path, 'brush_bitmap'), os.path.join(self.mdb_path, 'brush_bitmap'), self.BMPfile_copy_dict)
-        if file_deletion_en:
-            self.file_handler.remove_files(os.path.join(self.mdb_path, 'brush_script'), self.BSfile_delete_list)
-            self.file_handler.remove_files(os.path.join(self.mdb_path, 'brush_bitmap'), self.BMPfile_delete_list)
+            #regenerate sections
+            self.brush2cfg = self.regenerate_sections(self.brush2cfg, 1)
+            self.brushgroupcfg = self.regenerate_sections(self.brushgroupcfg, 0)
             
-        # if 'brush_texture' in os.listdir(self.mdb_path):
-        #     self.file_handler.copy_files(os.path.join(self.import_path, 'brush_texture'), os.path.join(self.mdb_path, 'brush_texture'), self.TEXfile_copy_list)
-        #     if file_deletion_en:
-        #         self.file_handler.remove_files(os.path.join(self.mdb_path, 'brush_texture'), self.TEXfile_delete_list)
-        # elif self.TEXfile_copy_list != []:#the brush_texture directory doens't exist and the copy file list isn't empty
-        #     os.mkdir(os.path.join(self.mdb_path, 'brush_texture'))
-        #     self.file_handler.copy_files(os.path.join(self.import_path, 'brush_texture'), os.path.join(self.mdb_path, 'brush_texture'), self.TEXfile_copy_list)
+            #write config files
+            with open(os.path.join(self.mdb_path, 'Brush2.ini'), 'w', encoding='UTF-8') as configfile:
+                self.brush2cfg.write(configfile)
+            with open(os.path.join(self.mdb_path, 'BrushGroup.ini'), 'w', encoding='UTF-8') as configfile:
+                self.brushgroupcfg.write(configfile)
+            
+            #copy and delete files
+            self.file_handler.copy_files(os.path.join(self.import_path, 'brush_script'), os.path.join(self.mdb_path, 'brush_script'), self.BSfile_copy_dict)
+            self.file_handler.copy_files(os.path.join(self.import_path, 'brush_bitmap'), os.path.join(self.mdb_path, 'brush_bitmap'), self.BMPfile_copy_dict)
+            if file_deletion_en:
+                self.file_handler.remove_files(os.path.join(self.mdb_path, 'brush_script'), self.BSfile_delete_list)
+                self.file_handler.remove_files(os.path.join(self.mdb_path, 'brush_bitmap'), self.BMPfile_delete_list)
+                
+            # if 'brush_texture' in os.listdir(self.mdb_path):
+            #     self.file_handler.copy_files(os.path.join(self.import_path, 'brush_texture'), os.path.join(self.mdb_path, 'brush_texture'), self.TEXfile_copy_list)
+            #     if file_deletion_en:
+            #         self.file_handler.remove_files(os.path.join(self.mdb_path, 'brush_texture'), self.TEXfile_delete_list)
+            # elif self.TEXfile_copy_list != []:#the brush_texture directory doens't exist and the copy file list isn't empty
+            #     os.mkdir(os.path.join(self.mdb_path, 'brush_texture'))
+            #     self.file_handler.copy_files(os.path.join(self.import_path, 'brush_texture'), os.path.join(self.mdb_path, 'brush_texture'), self.TEXfile_copy_list)
+            
+            #reset dictionaries and lists
+            self.BMPfile_delete_list = []
+            self.BMPfile_copy_dict = {}
+            self.BSfile_delete_list = []
+            self.BSfile_copy_dict = {}
         
-        #reset dictionaries and lists
-        self.BMPfile_delete_list = []
-        self.BMPfile_copy_dict = {}
-        self.BSfile_delete_list = []
-        self.BSfile_copy_dict = {}
+        else:
+            print(f'Error: Cannot save changes due to brush_script or brush_bitmap folder(s) being missing in {self.import_path}')
             
         
 
@@ -233,12 +274,12 @@ class cfg_handler():#cfg handler class responsible for main functionalities
                 
                 #add files to copy to copy list
                 if 'script' in section_entries:#copying files operates on unmodified names
-                    new_name = self.file_handler.get_new_name(os.path.join(self.mdb_path, 'brush_script'), section_entries['script'])
+                    new_name = self.file_handler.get_new_filename(os.listdir(os.path.join(self.mdb_path, 'brush_script')), section_entries['script'])
                     self.BSfile_copy_dict[section_entries['script']] = new_name
                     self.brush2cfg[str(brush_index)]['script'] = new_name
                     
                 elif 'bitmapfile' in section_entries:
-                    new_name = self.file_handler.get_new_name(os.path.join(self.mdb_path, 'brush_bitmap'), section_entries['bitmapfile'])
+                    new_name = self.file_handler.get_new_filename(os.listdir(os.path.join(self.mdb_path, 'brush_bitmap')), section_entries['bitmapfile'])
                     self.BMPfile_copy_dict[section_entries['bitmapfile']] = new_name
                     self.brush2cfg[str(brush_index)]['bitmapfile'] = new_name
 
