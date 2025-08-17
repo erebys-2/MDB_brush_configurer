@@ -35,19 +35,19 @@ class cfg_handler():#cfg handler class responsible for main functionalities
         self.xml_handler = xmlh()
         
         self.newcfg = cfgp.ConfigParser()
-        if 'BrushNew.xml' in os.listdir(self.import_path):#Fire Alpaca uses xml to store brush config data, generate ini from xml
+        file_name_list = []
+        brush_list = []
+        section = 0
+        loose_files_present = self.file_handler.check_for_loose_files(self.import_path)
+
+        if 'Brush2.ini' not in os.listdir(self.import_path) and 'BrushNew.xml' in os.listdir(self.import_path):#Fire Alpaca uses xml to store brush config data, generate ini from xml
             self.newcfg['General'] = {
                 'activeIndex': '0',
                 'version': '1'
             }
-            section = 0
-            for brush_datadict in self.xml_handler.brush_list:
-                self.newcfg[str(section)] = brush_datadict
-                section += 1 
-            with open(os.path.join(self.import_path, 'Brush2.ini'), 'w', encoding='UTF-8') as configfile:
-                self.newcfg.write(configfile)
-                
-        elif self.file_handler.check_for_loose_files(self.import_path):#check if current brush list directory has loose brush files eg .bs, .mdp, .png
+            brush_list = self.xml_handler.brush_list
+ 
+        elif loose_files_present:#check if current brush list directory has loose brush files eg .bs, .mdp, .png
             brush_list = self.file_handler.create_brush_list_from_files(self.import_path)#create list of dictionaries using inferred default values
             
             if 'Brush2.ini' not in os.listdir(self.import_path):#create new Brush2.ini if not found
@@ -55,22 +55,37 @@ class cfg_handler():#cfg handler class responsible for main functionalities
                     'activeIndex': '0',
                     'version': '1'
                 }
-                section = 0
-                for brush_datadict in brush_list:
-                    self.newcfg[str(section)] = brush_datadict
-                    section += 1 
-                with open(os.path.join(self.import_path, 'Brush2.ini'), 'w', encoding='UTF-8') as configfile:
-                    self.newcfg.write(configfile)
             else:
                 self.newcfg.read(f'{self.import_path}/Brush2.ini', encoding='UTF-8')
                 section = len(self.newcfg.sections()[1:])
-                for brush_datadict in brush_list:
+                
+                for sec in self.newcfg.sections()[1:]:
+                    file_name = self.get_filename_from_brush_datadict(self.newcfg[sec])
+                    if file_name != '':
+                        file_name_list.append(file_name)
+                
+        if brush_list != []:
+            print('Building Brush2.ini...')
+            has_dupes = False
+            for brush_datadict in brush_list:#
+                file_name = self.get_filename_from_brush_datadict(brush_datadict)
+        
+                if file_name not in file_name_list or file_name == '':
                     self.newcfg[str(section)] = brush_datadict
                     section += 1 
-                with open(os.path.join(self.import_path, 'Brush2.ini'), 'w', encoding='UTF-8') as configfile:
-                    self.newcfg.write(configfile)
-                
-            self.file_handler.organize_brush_list_folder(self.import_path)
+                    if file_name == '':
+                        file_name = f"[Brush Name]: {brush_datadict['name']}"
+                    print(f'{file_name} successfully added to Brush2.ini')
+                else:
+                    print(f'{file_name} already exists in Brush2.ini; will be moved into the duplicate_files folder')
+                    has_dupes = True
+            with open(os.path.join(self.import_path, 'Brush2.ini'), 'w', encoding='UTF-8') as configfile:
+                self.newcfg.write(configfile)
+            
+            if loose_files_present:
+                self.file_handler.organize_brush_list_folder(self.import_path, has_dupes)
+                    
+            
         
         self.newcfg.read(f'{self.import_path}/Brush2.ini', encoding='UTF-8')
         
@@ -126,7 +141,15 @@ class cfg_handler():#cfg handler class responsible for main functionalities
         #list where str(index) is the actual section name
         self.current_brushes_list = self.current_brushes_list = [f'{self.brush2cfg[section]['name']}, group {self.brush2cfg[section]['group']}' for section in self.brush2cfg.sections()[1:]]
         
-        
+    def get_filename_from_brush_datadict(self, input_dict):
+        rtn_str = ''
+        if 'bitmapfile' in input_dict.keys():
+            rtn_str = input_dict['bitmapfile']
+        elif 'script' in input_dict.keys():
+            rtn_str = input_dict['script']
+            
+        return rtn_str
+    
     #writes into csv files and copies/deletes files
     def save_changes(self, file_deletion_en):
         #regenerate sections

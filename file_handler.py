@@ -87,20 +87,39 @@ class file_handler():
         return rtn_list
         
     
-    def organize_brush_list_folder(self, src_path):#call after creating a cfg file
+    def organize_brush_list_folder(self, src_path, has_dupes):#call after creating a cfg file
         #check for and create directories
         if 'brush_script' not in os.listdir(src_path):
             os.mkdir(os.path.join(src_path, 'brush_script'))
         if 'brush_bitmap' not in os.listdir(src_path):
             os.mkdir(os.path.join(src_path, 'brush_bitmap'))
+        if has_dupes and 'duplicate_files' not in os.listdir(src_path):
+            os.mkdir(os.path.join(src_path, 'duplicate_files'))
         
         #move brushes into respective folders
         for file_name in os.listdir(src_path):
             name, ext = self.get_name_and_ext(file_name)
+            file_path = os.path.join(src_path, file_name)
+            if has_dupes:
+                dupes_path = os.path.join(src_path, 'duplicate_files')
+                
             if ext == '.bs':
-                shutil.move(os.path.join(src_path, file_name), os.path.join(src_path, 'brush_script'))
+                copy_path = os.path.join(src_path, 'brush_script')
+                if not self.has_file(copy_path, file_name):
+                    shutil.move(file_path, copy_path)
+                elif has_dupes:
+                    shutil.move(file_path, dupes_path)
+                else:
+                    os.remove(file_path)
             elif ext in ('.PNG', '.png', '.mdp'):
-                shutil.move(os.path.join(src_path, file_name), os.path.join(src_path, 'brush_bitmap'))
+                copy_path = os.path.join(src_path, 'brush_bitmap')
+                if not self.has_file(copy_path, file_name):
+                    shutil.move(file_path, copy_path)
+                elif has_dupes:
+                    shutil.move(file_path, dupes_path)
+                else:
+                    os.remove(file_path)
+                
                 
     
     def copy_files(self, src_path, dest_path, file_name_dict):
