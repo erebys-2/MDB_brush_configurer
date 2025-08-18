@@ -188,7 +188,7 @@ class cfg_handler():#cfg handler class responsible for main functionalities
     
     #writes into csv files and copies/deletes files
     def save_changes(self, file_deletion_en):
-        if os.path.exists(self.import_path, 'brush_script') and os.path.exists(self.import_path, 'brush_bitmap'):
+        if os.path.exists(os.path.join(self.import_path, 'brush_script')) and os.path.exists(os.path.join(self.import_path, 'brush_bitmap')):
         
             #regenerate sections
             self.brush2cfg = self.regenerate_sections(self.brush2cfg, 1)
